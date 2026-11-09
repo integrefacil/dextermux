@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dextermux - desktop remoto no Termux</title>
-<meta name="description" content="Desktop XFCE no Termux com VNC, noVNC no navegador e tunel Cloudflare, instalado com um comando.">
+<meta name="description" content="Desktop Linux no Termux com VNC, noVNC no navegador e tunel Cloudflare, instalado com um comando e configurado por um instalador interativo.">
 <style>
   :root {
     --bg: #0b1020;
@@ -96,6 +96,7 @@
     <div class="brand"><span class="dot"></span> dextermux</div>
     <nav>
       <a href="#instalacao">Instalacao</a>
+      <a href="#sessoes">Sessoes</a>
       <a href="#acesso">Acesso</a>
       <a href="https://github.com/integrefacil/dextermux">GitHub</a>
       <a href="https://github.com/integrefacil/dextermux/tree/main/specs">Specs</a>
@@ -104,24 +105,24 @@
 
   <main>
     <section class="hero">
-      <div class="tag">Termux + XFCE + VNC + Cloudflare</div>
+      <div class="tag">Termux + VNC + noVNC + Cloudflare</div>
       <h1>Seu <span>desktop Linux</span> no celular, acessivel de qualquer lugar.</h1>
       <p class="sub">
-        Instala e configura XFCE, TigerVNC, noVNC no navegador, tunel HTTPS do Cloudflare,
-        sshd com chave e banner de URLs. Tudo com um comando, sem root e sem proot.
+        Mede os recursos do aparelho, deixa voce escolher a interface e as ferramentas de
+        desenvolvimento, e configura VNC, noVNC, tunel HTTPS e sshd. Sem root e sem proot.
       </p>
       <div class="install">
         <span class="prompt">$</span>
-        <code id="cmd">curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh | bash</code>
+        <code id="cmd">curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh -o setup.sh && bash setup.sh</code>
         <button class="copy" id="copy">Copiar</button>
       </div>
       <div class="grid">
-        <div class="card"><div class="icon">&#128421;</div><h3>XFCE4 de verdade</h3><p>Sessao completa com painel, gerenciador de arquivos e terminal.</p></div>
-        <div class="card"><div class="icon">&#128274;</div><h3>VNC local</h3><p>TigerVNC com VncAuth na porta 5901, compativel com Remmina e apps VNC.</p></div>
-        <div class="card"><div class="icon">&#127760;</div><h3>No navegador</h3><p>noVNC na porta 6080. Abra, conecte e use sem instalar cliente.</p></div>
-        <div class="card"><div class="icon">&#9729;</div><h3>Acesso externo</h3><p>Cloudflare quick tunnel gera uma URL HTTPS publica automaticamente.</p></div>
-        <div class="card"><div class="icon">&#128273;</div><h3>SSH com chave</h3><p>sshd na 8022 e chave publica injetada no authorized_keys.</p></div>
-        <div class="card"><div class="icon">&#9881;</div><h3>Zero memoria</h3><p>Banner com as URLs ao abrir o Termux. Comandos <code class="inline">desktop</code> e <code class="inline">url</code>.</p></div>
+        <div class="card"><div class="icon">&#128202;</div><h3>Diagnostico antes</h3><p>Modelo, Android, nucleos, memoria, disco e rede com veredito antes de baixar qualquer pacote.</p></div>
+        <div class="card"><div class="icon">&#127912;</div><h3>Sem cara de XFCE</h3><p>Barra unica, busca de aplicativos com <code class="inline">rofi</code>, dock, tema Arc-Dark e apps GNOME.</p></div>
+        <div class="card"><div class="icon">&#128421;</div><h3>Tres sessoes</h3><p>Ubuntu-like, Cinnamon e MATE. Instale as tres, compare lado a lado e mantenha a sua.</p></div>
+        <div class="card"><div class="icon">&#128736;</div><h3>Perfis de dev</h3><p>Node, PHP, Python, Rust, Go, Java/Kotlin, bancos e Chromium, com o custo em disco de cada grupo.</p></div>
+        <div class="card"><div class="icon">&#127760;</div><h3>No navegador</h3><p>noVNC na porta 6080 e tunel HTTPS publico do Cloudflare com um comando.</p></div>
+        <div class="card"><div class="icon">&#9881;</div><h3>Zero memoria</h3><p>Banner com as URLs ao abrir o Termux. Comandos <code class="inline">desktop</code>, <code class="inline">url</code> e <code class="inline">dextermux-session</code>.</p></div>
       </div>
     </section>
 
@@ -129,14 +130,32 @@
       <h2>Como instalar</h2>
       <div class="steps">
         <div class="step"><b>1. Termux atualizado</b><span>Instale o Termux pela F-Droid ou GitHub e rode o comando da pagina.</span></div>
-        <div class="step"><b>2. Termux:Boot</b><span>Instale o app Termux:Boot e abra uma vez para o autostart funcionar.</span></div>
-        <div class="step"><b>3. Bateria</b><span>No Samsung, marque o Termux como "Sem restricoes" e em "Apps que nunca dormem".</span></div>
+        <div class="step"><b>2. Escolha no menu</b><span>Veja os recursos do aparelho, escolha a interface e as ferramentas, confirme o custo em disco.</span></div>
+        <div class="step"><b>3. Termux:Boot</b><span>Instale o app Termux:Boot e abra uma vez para o autostart funcionar.</span></div>
+        <div class="step"><b>4. Bateria</b><span>No Samsung, marque o Termux como "Sem restricoes" e em "Apps que nunca dormem".</span></div>
       </div>
-      <p class="sub" style="margin-top:22px">Com senha e chave definidas:</p>
+      <p class="sub" style="margin-top:22px">Automatico, sem menus:</p>
       <div class="install">
         <span class="prompt">$</span>
-        <code>curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh | VNC_PASS=MinhaSen SSH_PUBKEY="ssh-ed25519 AAAA..." bash</code>
+        <code>curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh | VNC_PASS=MinhaSen bash -s -- --desktop=ubuntu --dev=core,web</code>
       </div>
+      <p class="sub" style="margin-top:22px">Conferir o plano sem instalar:</p>
+      <div class="install">
+        <span class="prompt">$</span>
+        <code>bash setup.sh --dry-run --desktop=all --dev=core,web</code>
+      </div>
+    </section>
+
+    <section id="sessoes">
+      <h2>Sessoes graficas</h2>
+      <table>
+        <tr><th>Opcao</th><th>O que e</th><th>Disco</th><th>Estado</th></tr>
+        <tr><td><code class="inline">ubuntu</code></td><td>XFCE sem menus: barra unica, busca com rofi, dock plank, tema Arc-Dark, apps GNOME</td><td>~817 MB</td><td>validado</td></tr>
+        <tr><td><code class="inline">cinnamon</code></td><td>Sessao do Linux Mint</td><td>~1691 MB</td><td>experimental</td></tr>
+        <tr><td><code class="inline">mate</code></td><td>Visual classico do Ubuntu</td><td>~1345 MB</td><td>experimental</td></tr>
+        <tr><td><code class="inline">all</code></td><td>As tres, para comparar antes de decidir</td><td>~2256 MB</td><td>avaliacao</td></tr>
+        <tr><td><code class="inline">none</code></td><td>Sem desktop, apenas sshd e ferramentas</td><td>~260 MB</td><td>validado</td></tr>
+      </table>
     </section>
 
     <section id="acesso">
@@ -155,13 +174,22 @@
       <table>
         <tr><th>Comando</th><th>Efeito</th></tr>
         <tr><td><code class="inline">desktop</code></td><td>Sobe sshd, Xvnc, websockify e cloudflared.</td></tr>
-        <tr><td><code class="inline">url</code></td><td>Imprime as URLs e o estado dos servicos.</td></tr>
+        <tr><td><code class="inline">url</code></td><td>Imprime as URLs, a sessao e o estado dos servicos.</td></tr>
+        <tr><td><code class="inline">dextermux-session list</code></td><td>Lista as sessoes instaladas e a padrao.</td></tr>
+        <tr><td><code class="inline">dextermux-session try mate</code></td><td>Abre outra sessao em paralelo na porta 6081.</td></tr>
+        <tr><td><code class="inline">dextermux-session remove cinnamon</code></td><td>Remove os pacotes exclusivos da sessao.</td></tr>
+        <tr><td><code class="inline">dextermux-theme</code></td><td>Reaplica o visual Ubuntu-like.</td></tr>
         <tr><td><code class="inline">tail -f $TMPDIR/cf.log</code></td><td>Acompanha o tunel do Cloudflare.</td></tr>
       </table>
     </section>
 
     <section>
       <div class="note">
+        <b>Cinnamon e MATE sao experimentais.</b> Foram medidos e instalados pelo script, mas nao validados
+        no aparelho de referencia. O instalador registra falha em <code class="inline">$TMPDIR/session.log</code>
+        e cai automaticamente para a sessao <code class="inline">ubuntu</code>.
+      </div>
+      <div class="note" style="margin-top:16px">
         <b>Nao usa xrdp.</b> O pacote <code class="inline">xrdp 0.10.6.1</code> do Termux tem bug de autenticacao
         (<code class="inline">Bugcheck; inconsistent auth result</code>). O caminho suportado e VNC + noVNC.
         Detalhes em <a href="https://github.com/integrefacil/dextermux/blob/main/specs/001-remote-desktop/research.md">research.md</a>.

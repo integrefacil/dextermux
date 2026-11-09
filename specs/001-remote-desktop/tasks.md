@@ -10,7 +10,7 @@
 - [x] T001 Criar `setup.sh` na raiz do projeto
 - [x] T002 Validar sintaxe com `bash -n`
 - [x] T003 Definir variaveis de ambiente (`VNC_PASS`, `GEOMETRY`, `NOVNC_VER`, `SSH_PUBKEY`, `TUNNEL`)
-- [x] T004 Garantir compatibilidade com `curl -fsSL <url> | bash` (sem `read`, sem `pipefail`)
+- [x] T004 Garantir compatibilidade com `curl -fsSL <url> | bash` (leitura de respostas por `/dev/tty`, sem consumir o stdin do script)
 
 ## Phase 2: Foundational
 
@@ -62,6 +62,31 @@
 - [x] T032 `specs/001-remote-desktop/plan.md`
 - [x] T033 `specs/001-remote-desktop/research.md`
 - [x] T034 `specs/001-remote-desktop/tasks.md`
+
+## Phase 9: Instalador interativo (v2.0.0)
+
+- [x] T035 Diagnostico de recursos (modelo, Android, nucleos, memoria, disco, rede, instalacao existente) com veredito
+- [x] T036 TUI numerada em bash puro, sem emojis, com fallback ASCII e `NO_COLOR`
+- [x] T037 Leitura de respostas por `/dev/tty` para nao consumir o stdin de `curl | bash`
+- [x] T038 Modo automatico por `--yes`, flags e variaveis de ambiente
+- [x] T039 Menu de sessao grafica com custo em disco e selo `validado`/`experimental`
+- [x] T040 Menu multi-select de perfis de desenvolvimento
+- [x] T041 Tela de confirmacao com estimativa total e retorno as escolhas
+- [x] T042 `--dry-run` e `--list`
+- [x] T043 Log completo em `~/dextermux-install.log` e `pkg clean` ao final
+
+## Phase 10: Sessoes e visual (v2.0.0)
+
+- [x] T044 Preset `ubuntu`: painel unico, rofi, plank-reloaded, picom, Arc-Dark, Adwaita, apps GNOME e fonte Ubuntu
+- [x] T045 Presets `cinnamon` e `mate` marcados como experimentais
+- [x] T046 Preset `all` com as tres sessoes e default `ubuntu`
+- [x] T047 `~/.dextermux/session` e override por display
+- [x] T048 `dextermux-session` com `list`, `set`, `try`, `stop` e `remove`
+- [x] T049 `dextermux-theme` para reaplicar o visual sem reinstalar
+- [x] T050 Fallback de 15 s para sessao que falha, com log em `$TMPDIR/session.log`
+- [x] T051 `start-desktop.sh` parametrizado por display (6080/6081, 5901/5902)
+- [x] T052 Atualizar README, quickstart, contrato CLI, spec, plano e constitution 1.1.0
+- [ ] T053 Validar Cinnamon e MATE no aparelho e promover ou remover o preset
 - [x] T035 `specs/001-remote-desktop/quickstart.md`
 - [x] T036 `specs/001-remote-desktop/contracts/cli-contract.md`
 

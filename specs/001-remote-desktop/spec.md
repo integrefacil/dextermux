@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-remote-desktop`
 **Created**: 2026-11-09
-**Status**: Implemented
+**Status**: Implemented (instalador v2.0.0)
 **Input**: Usuario quer reinstalar o ambiente de acesso remoto do celular com um unico comando, sem repetir a investigacao feita manualmente.
 
 ## User Scenarios & Testing
@@ -61,6 +61,36 @@ O usuario quer texto nitido e resolucao acompanhando a janela do cliente.
 1. **Given** o Xvnc iniciado, **When** o cliente noVNC pede redimensionamento, **Then** a resolucao muda sem reiniciar o servidor.
 2. **Given** antialiasing/hinting configurados, **When** o desktop e aberto, **Then** o texto aparece suavizado.
 
+### User Story 5 - Escolher o que instalar antes de baixar (Priority: P1)
+
+O usuario quer ver os recursos do aparelho e decidir a interface e as ferramentas antes de baixar centenas de megabytes.
+
+**Why this priority**: sem diagnostico o usuario descobre que o aparelho nao comporta o preset depois de gastar espaco e tempo.
+
+**Independent Test**: em um Termux limpo, abrir o instalador, ver o painel de recursos com veredito, escolher `all` no menu de sessoes e `core web` no de desenvolvimento, e obter exatamente esses pacotes.
+
+**Acceptance Scenarios**:
+
+1. **Given** o instalador aberto, **When** a primeira tela aparece, **Then** ela mostra modelo, Android, nucleos, memoria, espaco livre, rede e veredito antes de qualquer download.
+2. **Given** o menu de sessoes, **When** o usuario escolhe uma opcao, **Then** o custo em disco e o selo `validado`/`experimental` aparecem na mesma linha.
+3. **Given** o menu de desenvolvimento, **When** o usuario digita `1 3`, **Then** apenas os grupos 1 e 3 ficam marcados.
+4. **Given** a tela de confirmacao, **When** o usuario escolhe voltar, **Then** as escolhas anteriores sao preservadas ao reabrir os menus.
+
+### User Story 6 - Comparar sessoes graficas antes de decidir (Priority: P2)
+
+O usuario quer instalar mais de uma sessao, testar cada uma e depois manter apenas a escolhida.
+
+**Why this priority**: o visual e uma decisao subjetiva que so se resolve vendo na tela.
+
+**Independent Test**: instalar `all`, rodar `dextermux-session try mate`, abrir a porta 6081 e comparar com a sessao da porta 6080.
+
+**Acceptance Scenarios**:
+
+1. **Given** as tres sessoes instaladas, **When** o usuario roda `dextermux-session list`, **Then** ve quais estao instaladas e qual e a padrao.
+2. **Given** `dextermux-session try cinnamon`, **When** o comando termina, **Then** o display `:2` responde em `6081` sem derrubar o `:1`.
+3. **Given** uma sessao escolhida, **When** ela morre em menos de 15 segundos, **Then** o `xstartup` registra em `$TMPDIR/session.log` e cai para `ubuntu`.
+4. **Given** `dextermux-session remove cinnamon`, **When** o usuario confirma, **Then** apenas os pacotes exclusivos do Cinnamon sao removidos.
+
 ### Edge Cases
 
 - O Android mata os processos em segundo plano: o banner deve indicar "rode: desktop".
@@ -74,9 +104,9 @@ O usuario quer texto nitido e resolucao acompanhando a janela do cliente.
 
 ### Functional Requirements
 
-- **FR-001**: O instalador DEVE rodar sem prompts interativos, aceitando configuracao por variaveis de ambiente.
+- **FR-001**: O instalador DEVE rodar sem prompts quando nao houver TTY ou com `--yes`, aceitando configuracao por flags e variaveis de ambiente; com TTY, DEVE abrir `/dev/tty` e oferecer menus numerados sem consumir o stdin do script.
 - **FR-002**: O instalador DEVE ser idempotente, preservando senha VNC e chaves SSH existentes.
-- **FR-003**: O sistema DEVE instalar e configurar XFCE4 como sessao do VNC.
+- **FR-003**: O sistema DEVE instalar e configurar a sessao grafica escolhida: `ubuntu` (XFCE restilizado), `cinnamon`, `mate`, `all` ou `none`.
 - **FR-004**: O sistema DEVE subir o Xvnc com `VncAuth` e resolucao inicial configuravel.
 - **FR-005**: O sistema DEVE servir noVNC + websockify na porta 6080.
 - **FR-006**: O sistema DEVE oferecer um tunel HTTPS publico opcional via Cloudflare.
@@ -86,12 +116,18 @@ O usuario quer texto nitido e resolucao acompanhando a janela do cliente.
 - **FR-010**: O sistema DEVE iniciar os servicos no boot via Termux:Boot.
 - **FR-011**: O sistema NAO DEVE depender de root, proot, systemd ou pacotes quebrados.
 - **FR-012**: O sistema DEVE orientar sobre bateria/IP/porta e riscos de exposicao publica.
+- **FR-013**: O instalador DEVE medir recursos (modelo, Android, nucleos, memoria total/livre, espaco livre, rede) antes de instalar e emitir veredito.
+- **FR-014**: Toda opcao de menu DEVE exibir custo estimado em disco e selo `validado` ou `experimental`.
+- **FR-015**: O sistema DEVE permitir trocar a sessao padrao, testar uma sessao em paralelo no display `:2` e remover os pacotes exclusivos de uma sessao.
+- **FR-016**: O preset `ubuntu` DEVE remover o painel duplo e o menu em arvore do XFCE, usando launcher de busca, barra unica, dock e compositor leve.
+- **FR-017**: O sistema DEVE registrar falha de sessao experimental em log e cair automaticamente para `ubuntu`.
+- **FR-018**: O instalador DEVE gravar log completo da execucao em `~/dextermux-install.log`.
 
 ### Key Entities
 
-- **Servicos remotos**: VNC (5901), noVNC (6080), sshd (8022), tunel publico.
-- **Configuracao persistida**: `~/.vnc/xstartup`, `~/.vnc/passwd`, `~/start-desktop.sh`, `~/show-access.sh`, `~/.termux/boot/start-services.sh`, `~/tunnel-url.txt`.
-- **Estado de execucao**: processos `Xvnc`, `websockify`, `cloudflared`; logs em `$TMPDIR/{cf,ws}.log` e `~/.vnc/localhost:1.log`.
+- **Servicos remotos**: VNC (5901), noVNC (6080), sshd (8022), tunel publico, sessao de teste (5902/6081).
+- **Configuracao persistida**: `~/.vnc/xstartup`, `~/.vnc/passwd`, `~/start-desktop.sh`, `~/show-access.sh`, `~/.termux/boot/start-services.sh`, `~/tunnel-url.txt`, `~/.dextermux/session`, `~/.dextermux/session-manager.sh`, `~/.dextermux/theme.sh`, `~/.config/{rofi,picom.conf,plank}`, `~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml`.
+- **Estado de execucao**: processos `Xvnc`, `websockify`, `cloudflared`, `picom`, `plank`; logs em `$TMPDIR/{cf,ws}.log`, `$TMPDIR/session.log`, `~/.vnc/localhost:1.log` e `~/dextermux-install.log`.
 
 ## Success Criteria
 
@@ -102,6 +138,9 @@ O usuario quer texto nitido e resolucao acompanhando a janela do cliente.
 - **SC-003**: O banner mostra as tres URLs corretas em 100% das aberturas com servicos ativos.
 - **SC-004**: A URL publica responde HTTP 200 em `vnc.html` apos o tunel registrar a conexao.
 - **SC-005**: Apos queda total, `desktop` restabelece 5901 e 6080 sem intervencao manual.
+- **SC-006**: A primeira tela do instalador mostra os recursos e um veredito em menos de 3 segundos, sem baixar pacotes.
+- **SC-007**: `dextermux-session try` sobe a segunda sessao sem derrubar a primeira e sem reiniciar o tunel.
+- **SC-008**: O preset `ubuntu` nao exibe o painel duplo nem o menu em arvore padrao do XFCE.
 
 ## Assumptions
 
@@ -110,6 +149,8 @@ O usuario quer texto nitido e resolucao acompanhando a janela do cliente.
 - O uso do tunel publico e pessoal e a rede de saida nao bloqueia Cloudflare.
 - A senha do VNC Auth tem no maximo 8 caracteres (limitacao do protocolo).
 - O usuario entende que a exposicao publica depende da senha do VNC.
+- Apenas o preset `ubuntu` (XFCE restilizado) e validado no aparelho; `cinnamon` e `mate` dependem de validacao do usuario.
+- `gnome-shell`, `mutter` e `nautilus` nao existem no repositorio do Termux, entao o visual GNOME e obtido por tema e launcher, nao pela sessao oficial.
 
 ## Checklist de qualidade
 
