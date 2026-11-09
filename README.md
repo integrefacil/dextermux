@@ -3,8 +3,10 @@
 Desktop Linux no Termux com acesso remoto por VNC, noVNC no navegador e tunel HTTPS do Cloudflare, instalado com um comando e configurado por um instalador interativo.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh -o setup.sh && bash setup.sh
+curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash
 ```
+
+A pagina publicada tambem serve o instalador em `/setup.sh`, mantido identico a raiz por CI.
 
 Pagina do projeto: https://integrefacil.github.io/dextermux/
 
@@ -90,19 +92,23 @@ Variaveis de ambiente continuam aceitas: `VNC_PASS`, `GEOMETRY`, `NOVNC_VER`, `S
 ## Modos de execucao
 
 ```bash
-# interativo, recomendado
-curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh -o setup.sh && bash setup.sh
+# interativo, recomendado (URL curta da pagina)
+curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash
 
 # interativo sem gravar arquivo
-bash <(curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh)
+bash <(curl -fsSL https://integrefacil.github.io/dextermux/setup.sh)
 
 # pipe direto (interativo se houver terminal, automatico sem terminal)
-curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh | bash
+curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash
 
 # automatico com escolhas
-curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh \
+curl -fsSL https://integrefacil.github.io/dextermux/setup.sh \
   | VNC_PASS=MinhaSen bash -s -- --desktop=ubuntu --dev=core,web
 ```
+
+A pagina publicada serve o instalador em `/setup.sh`. O arquivo `docs/setup.sh` e uma copia
+sincronizada automaticamente por CI (`.github/workflows/sync-setup.yml`) a cada push em `setup.sh`.
+A fonte canonica continua sendo o `setup.sh` da raiz.
 
 Em `curl | bash` o stdin e o proprio script, entao o instalador abre `/dev/tty` para ler as respostas sem consumir o codigo. Sem terminal disponivel, ele usa os padroes.
 

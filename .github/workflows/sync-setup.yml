@@ -1,0 +1,40 @@
+name: sync-setup
+
+# Mantem docs/setup.sh identico ao setup.sh da raiz, para que a pagina
+# publicada em https://integrefacil.github.io/dextermux/setup.sh sirva
+# sempre a versao atual do instalador.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - setup.sh
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Copiar setup.sh para docs
+        run: |
+          cp setup.sh docs/setup.sh
+          chmod +x docs/setup.sh
+
+      - name: Commitar se houver diferenca
+        run: |
+          if git diff --quiet -- docs/setup.sh; then
+            echo "docs/setup.sh ja esta sincronizado"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/setup.sh
+          git commit -m "chore(docs): sincronizar setup.sh com a pagina"
+          git push
