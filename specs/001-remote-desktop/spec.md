@@ -88,7 +88,7 @@ O usuario quer instalar mais de uma sessao, testar cada uma e depois manter apen
 
 1. **Given** as tres sessoes instaladas, **When** o usuario roda `dextermux-session list`, **Then** ve quais estao instaladas e qual e a padrao.
 2. **Given** `dextermux-session try cinnamon`, **When** o comando termina, **Then** o display `:2` responde em `6081` sem derrubar o `:1`.
-3. **Given** uma sessao escolhida, **When** ela morre em menos de 15 segundos, **Then** o `xstartup` registra em `$TMPDIR/session.log` e cai para `ubuntu`.
+3. **Given** uma sessao escolhida, **When** ela morre em menos de 15 segundos, **Then** o `xstartup` registra em `$TMPDIR/session.log` e cai para `xfce`.
 4. **Given** `dextermux-session remove cinnamon`, **When** o usuario confirma, **Then** apenas os pacotes exclusivos do Cinnamon sao removidos.
 
 ### Edge Cases
@@ -106,7 +106,7 @@ O usuario quer instalar mais de uma sessao, testar cada uma e depois manter apen
 
 - **FR-001**: O instalador DEVE rodar sem prompts quando nao houver TTY ou com `--yes`, aceitando configuracao por flags e variaveis de ambiente; com TTY, DEVE abrir `/dev/tty` e oferecer menus numerados sem consumir o stdin do script.
 - **FR-002**: O instalador DEVE ser idempotente, preservando senha VNC e chaves SSH existentes.
-- **FR-003**: O sistema DEVE instalar e configurar a sessao grafica escolhida: `ubuntu` (XFCE restilizado), `cinnamon`, `mate`, `all` ou `none`.
+- **FR-003**: O sistema DEVE instalar e configurar a sessao grafica escolhida: `cinnamon` (padrao), `xfce` (visual padrao), `mate`, `all` ou `none`.
 - **FR-004**: O sistema DEVE subir o Xvnc com `VncAuth` e resolucao inicial configuravel.
 - **FR-005**: O sistema DEVE servir noVNC + websockify na porta 6080.
 - **FR-006**: O sistema DEVE oferecer um tunel HTTPS publico opcional via Cloudflare.
@@ -119,15 +119,15 @@ O usuario quer instalar mais de uma sessao, testar cada uma e depois manter apen
 - **FR-013**: O instalador DEVE medir recursos (modelo, Android, nucleos, memoria total/livre, espaco livre, rede) antes de instalar e emitir veredito.
 - **FR-014**: Toda opcao de menu DEVE exibir custo estimado em disco e selo `validado` ou `experimental`.
 - **FR-015**: O sistema DEVE permitir trocar a sessao padrao, testar uma sessao em paralelo no display `:2` e remover os pacotes exclusivos de uma sessao.
-- **FR-016**: O preset `ubuntu` DEVE remover o painel duplo e o menu em arvore do XFCE, usando launcher de busca, barra unica, dock e compositor leve.
-- **FR-017**: O sistema DEVE registrar falha de sessao experimental em log e cair automaticamente para `ubuntu`.
+- **FR-016**: O preset `xfce` DEVE instalar apenas `xfce4` e `xfdesktop`, sem tema, dock, compositor ou apps extras, e `cinnamon` DEVE ser a sessao padrao.
+- **FR-017**: O sistema DEVE registrar falha de sessao experimental em log e cair automaticamente para `xfce`.
 - **FR-018**: O instalador DEVE gravar log completo da execucao em `~/dextermux-install.log`.
 
 ### Key Entities
 
 - **Servicos remotos**: VNC (5901), noVNC (6080), sshd (8022), tunel publico, sessao de teste (5902/6081).
-- **Configuracao persistida**: `~/.vnc/xstartup`, `~/.vnc/passwd`, `~/start-desktop.sh`, `~/show-access.sh`, `~/.termux/boot/start-services.sh`, `~/tunnel-url.txt`, `~/.dextermux/session`, `~/.dextermux/session-manager.sh`, `~/.dextermux/theme.sh`, `~/.config/{rofi,picom.conf,plank}`, `~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml`.
-- **Estado de execucao**: processos `Xvnc`, `websockify`, `cloudflared`, `picom`, `plank`; logs em `$TMPDIR/{cf,ws}.log`, `$TMPDIR/session.log`, `~/.vnc/localhost:1.log` e `~/dextermux-install.log`.
+- **Configuracao persistida**: `~/.vnc/xstartup`, `~/.vnc/passwd`, `~/start-desktop.sh`, `~/show-access.sh`, `~/.termux/boot/start-services.sh`, `~/tunnel-url.txt`, `~/.dextermux/session`, `~/.dextermux/session.<display>`, `~/.dextermux/running.<display>`, `~/.dextermux/session-manager.sh`.
+- **Estado de execucao**: processos `Xvnc`, `websockify`, `cloudflared`; logs em `$TMPDIR/{cf,ws}.log`, `$TMPDIR/session.log`, `~/.vnc/localhost:1.log` e `~/dextermux-install.log`.
 
 ## Success Criteria
 
@@ -140,7 +140,7 @@ O usuario quer instalar mais de uma sessao, testar cada uma e depois manter apen
 - **SC-005**: Apos queda total, `desktop` restabelece 5901 e 6080 sem intervencao manual.
 - **SC-006**: A primeira tela do instalador mostra os recursos e um veredito em menos de 3 segundos, sem baixar pacotes.
 - **SC-007**: `dextermux-session try` sobe a segunda sessao sem derrubar a primeira e sem reiniciar o tunel.
-- **SC-008**: O preset `ubuntu` nao exibe o painel duplo nem o menu em arvore padrao do XFCE.
+- **SC-008**: O preset `xfce` nao instala tema, dock, compositor ou apps extras, e a sessao padrao e `cinnamon`.
 
 ## Assumptions
 
@@ -149,8 +149,8 @@ O usuario quer instalar mais de uma sessao, testar cada uma e depois manter apen
 - O uso do tunel publico e pessoal e a rede de saida nao bloqueia Cloudflare.
 - A senha do VNC Auth tem no maximo 8 caracteres (limitacao do protocolo).
 - O usuario entende que a exposicao publica depende da senha do VNC.
-- Apenas o preset `ubuntu` (XFCE restilizado) e validado no aparelho; `cinnamon` e `mate` dependem de validacao do usuario.
-- `gnome-shell`, `mutter` e `nautilus` nao existem no repositorio do Termux, entao o visual GNOME e obtido por tema e launcher, nao pela sessao oficial.
+- `cinnamon` e `xfce` foram validados no aparelho; `mate` depende de validacao do usuario.
+- `gnome-shell`, `mutter` e `nautilus` nao existem no repositorio do Termux, por isso Cinnamon e MATE sao as alternativas mais proximas de um desktop completo.
 
 ## Checklist de qualidade
 

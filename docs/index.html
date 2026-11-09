@@ -118,8 +118,8 @@
       </div>
       <div class="grid">
         <div class="card"><div class="icon">&#128202;</div><h3>Diagnostico antes</h3><p>Modelo, Android, nucleos, memoria, disco e rede com veredito antes de baixar qualquer pacote.</p></div>
-        <div class="card"><div class="icon">&#127912;</div><h3>Sem cara de XFCE</h3><p>Barra unica, busca de aplicativos com <code class="inline">rofi</code>, dock, tema Arc-Dark e apps GNOME.</p></div>
-        <div class="card"><div class="icon">&#128421;</div><h3>Tres sessoes</h3><p>Ubuntu-like, Cinnamon e MATE. Instale as tres, compare lado a lado e mantenha a sua.</p></div>
+        <div class="card"><div class="icon">&#127912;</div><h3>Cinnamon como padrao</h3><p>Sessao completa do Linux Mint, com XFCE e MATE disponiveis para comparar.</p></div>
+        <div class="card"><div class="icon">&#128421;</div><h3>Tres sessoes</h3><p>Cinnamon, XFCE e MATE. Instale as tres, compare lado a lado e mantenha a sua.</p></div>
         <div class="card"><div class="icon">&#128736;</div><h3>Perfis de dev</h3><p>Node, PHP, Python, Rust, Go, Java/Kotlin, bancos e Chromium, com o custo em disco de cada grupo.</p></div>
         <div class="card"><div class="icon">&#127760;</div><h3>No navegador</h3><p>noVNC na porta 6080 e tunel HTTPS publico do Cloudflare com um comando.</p></div>
         <div class="card"><div class="icon">&#9881;</div><h3>Zero memoria</h3><p>Banner com as URLs ao abrir o Termux. Comandos <code class="inline">desktop</code>, <code class="inline">url</code> e <code class="inline">dextermux-session</code>.</p></div>
@@ -137,7 +137,7 @@
       <p class="sub" style="margin-top:22px">Automatico, sem menus:</p>
       <div class="install">
         <span class="prompt">$</span>
-        <code>curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | VNC_PASS=MinhaSen bash -s -- --desktop=ubuntu --dev=core,web</code>
+        <code>curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | VNC_PASS=MinhaSen bash -s -- --desktop=cinnamon --dev=core,web</code>
       </div>
       <p class="sub" style="margin-top:22px">Conferir o plano sem instalar:</p>
       <div class="install">
@@ -150,10 +150,10 @@
       <h2>Sessoes graficas</h2>
       <table>
         <tr><th>Opcao</th><th>O que e</th><th>Disco</th><th>Estado</th></tr>
-        <tr><td><code class="inline">ubuntu</code></td><td>XFCE sem menus: barra unica, busca com rofi, dock plank, tema Arc-Dark, apps GNOME</td><td>~817 MB</td><td>validado</td></tr>
-        <tr><td><code class="inline">cinnamon</code></td><td>Sessao do Linux Mint</td><td>~1691 MB</td><td>experimental</td></tr>
+        <tr><td><code class="inline">cinnamon</code></td><td>Sessao do Linux Mint, padrao</td><td>~1691 MB</td><td>validado</td></tr>
+        <tr><td><code class="inline">xfce</code></td><td>XFCE4 padrao, sem restilizacao</td><td>~739 MB</td><td>validado</td></tr>
         <tr><td><code class="inline">mate</code></td><td>Visual classico do Ubuntu</td><td>~1345 MB</td><td>experimental</td></tr>
-        <tr><td><code class="inline">all</code></td><td>As tres, para comparar antes de decidir</td><td>~2256 MB</td><td>avaliacao</td></tr>
+        <tr><td><code class="inline">all</code></td><td>As tres, para comparar antes de decidir</td><td>~2224 MB</td><td>comparacao</td></tr>
         <tr><td><code class="inline">none</code></td><td>Sem desktop, apenas sshd e ferramentas</td><td>~260 MB</td><td>validado</td></tr>
       </table>
     </section>
@@ -178,16 +178,15 @@
         <tr><td><code class="inline">dextermux-session list</code></td><td>Lista as sessoes instaladas e a padrao.</td></tr>
         <tr><td><code class="inline">dextermux-session try mate</code></td><td>Abre outra sessao em paralelo na porta 6081.</td></tr>
         <tr><td><code class="inline">dextermux-session remove cinnamon</code></td><td>Remove os pacotes exclusivos da sessao.</td></tr>
-        <tr><td><code class="inline">dextermux-theme</code></td><td>Reaplica o visual Ubuntu-like.</td></tr>
         <tr><td><code class="inline">tail -f $TMPDIR/cf.log</code></td><td>Acompanha o tunel do Cloudflare.</td></tr>
       </table>
     </section>
 
     <section>
       <div class="note">
-        <b>Cinnamon e MATE sao experimentais.</b> Foram medidos e instalados pelo script, mas nao validados
-        no aparelho de referencia. O instalador registra falha em <code class="inline">$TMPDIR/session.log</code>
-        e cai automaticamente para a sessao <code class="inline">ubuntu</code>.
+        <b>MATE e experimental.</b> Cinnamon e XFCE foram validados no aparelho. Se uma sessao morrer em menos
+        de 15 segundos, o instalador registra em <code class="inline">$TMPDIR/session.log</code> e cai para
+        <code class="inline">xfce</code>.
       </div>
       <div class="note" style="margin-top:16px">
         <b>Nao usa xrdp.</b> O pacote <code class="inline">xrdp 0.10.6.1</code> do Termux tem bug de autenticacao

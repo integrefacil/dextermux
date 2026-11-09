@@ -21,7 +21,7 @@ Pipe direto (interativo se houver terminal, automatico sem terminal):
 ```bash
 curl -fsSL https://raw.githubusercontent.com/<user>/<repo>/main/setup.sh | bash
 curl -fsSL https://raw.githubusercontent.com/<user>/<repo>/main/setup.sh \
-  | VNC_PASS=MinhaSen bash -s -- --desktop=ubuntu --dev=core,web --no-tunnel
+  | VNC_PASS=MinhaSen bash -s -- --desktop=cinnamon --dev=core,web --no-tunnel
 ```
 
 Conferir o plano antes de instalar:
@@ -35,10 +35,10 @@ bash setup.sh --list
 
 | Opcao | O que e | Disco |
 |-------|---------|-------|
-| `ubuntu` | XFCE sem menus: barra unica, rofi na tecla Super, dock plank, tema Arc-Dark, apps GNOME | ~817 MB |
-| `cinnamon` | Sessao do Linux Mint (experimental) | ~1691 MB |
+| `cinnamon` | Sessao do Linux Mint (padrao) | ~1691 MB |
+| `xfce` | XFCE4 padrao, sem restilizacao | ~739 MB |
 | `mate` | Visual classico do Ubuntu (experimental) | ~1345 MB |
-| `all` | As tres, para comparar | ~2256 MB |
+| `all` | As tres, para comparar | ~2224 MB |
 | `none` | Sem desktop, so sshd e ferramentas | ~260 MB |
 
 Recomendacao para avaliar: escolha `all`, teste cada uma e depois mantenha apenas a vencedora.
@@ -49,7 +49,7 @@ Apos abrir uma sessao nova no Termux, o banner mostra:
 
 ```text
 === Acesso remoto ===
-Sessao:       ubuntu
+Sessao:       cinnamon
 VNC local:    vnc://192.168.0.x:5901
 noVNC local:  http://192.168.0.x:6080/vnc.html
 Publico:      https://xxxx.trycloudflare.com/vnc.html
@@ -73,8 +73,8 @@ dextermux-session set mate      # troca a padrao e reinicia o :1
 dextermux-session remove mate   # remove os pacotes exclusivos do MATE
 ```
 
-Enquanto o `:2` estiver ativo, abra `http://<ip>:6081/vnc.html` em outra aba e compare com a `6080`. Para uma terceira sessao use `dextermux-session try ubuntu 3` (noVNC 6082). Se o display ja estiver ativo com outra sessao, o script reinicia esse display com a sessao pedida.
-Se uma sessao experimental morrer em menos de 15 segundos, o `xstartup` cai para `ubuntu` e registra
+Enquanto o `:2` estiver ativo, abra `http://<ip>:6081/vnc.html` em outra aba e compare com a `6080`. Para uma terceira sessao use `dextermux-session try xfce 3` (noVNC 6082). Se o display ja estiver ativo com outra sessao, o script reinicia esse display com a sessao pedida.
+Se uma sessao experimental morrer em menos de 15 segundos, o `xstartup` cai para `xfce` e registra
 o motivo em `$TMPDIR/session.log`.
 
 ## 5. Comandos do dia a dia
@@ -83,7 +83,6 @@ o motivo em `$TMPDIR/session.log`.
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e cloudflared (idempotente) |
 | `url` | imprime o banner com as URLs e o estado atual |
-| `dextermux-theme` | reaplica o visual Ubuntu-like |
 | `vncserver -kill :1` | encerra a sessao VNC principal |
 | `pkill -x cloudflared` | derruba o tunel atual |
 | `tail -f $TMPDIR/cf.log` | log do tunel |
@@ -119,8 +118,6 @@ Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 | `Address already in use` na 8022 | sshd zumbi | reiniciar o Termux ou `pkill -x sshd; desktop` |
 | URL publica nao abre | tunnel caiu / URL mudou | `url` e `pkill -x cloudflared; desktop` |
 | Sessao caiu e voltou para XFCE | sessao experimental falhou | `cat $TMPDIR/session.log` |
-| Painel sem os plugins | XML rejeitado pelo XFCE | `dextermux-theme` e reiniciar a sessao |
-| Dock nao aparece | `plank` iniciou antes do compositor | `pkill -x plank; setsid plank &` |
 | Texto borrado | compressao alta | Quality 9 / Compression 0 no noVNC |
 | Resolucao nao acompanha | Remote Resize desligado | ativar em Scaling Mode |
 

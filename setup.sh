@@ -4,12 +4,12 @@
 # Instala e configura:
 #   - Diagnostico de recursos antes de qualquer download
 #   - Interface interativa numerada (sem emojis, sem dependencias)
-#   - Sessao grafica escolhida: Ubuntu-like (XFCE restilizado), Cinnamon, MATE ou nenhuma
+#   - Sessao grafica escolhida: Cinnamon (padrao), XFCE, MATE ou nenhuma
 #   - TigerVNC (Xvnc) com VncAuth, resolucao configuravel e accept-resize
 #   - noVNC + websockify (navegador, porta 6080)
 #   - Cloudflare quick tunnel (HTTPS publico, opcional)
 #   - sshd + chave autorizada
-#   - Banner com as URLs, comandos "url", "desktop", "dextermux-session" e "dextermux-theme"
+#   - Banner com as URLs, comandos "url", "desktop" e "dextermux-session"
 #   - Autostart no boot (Termux:Boot)
 #
 # Uso interativo:
@@ -18,12 +18,12 @@
 #   curl -fsSL <URL_RAW> | bash          # interativo se houver terminal; senao usa os padroes
 #
 # Uso nao interativo:
-#   bash setup.sh --yes --desktop=ubuntu --dev=core,web
+#   bash setup.sh --yes --desktop=cinnamon --dev=core,web
 #   curl -fsSL <URL_RAW> | VNC_PASS=MinhaSen bash
 #
 # Flags:
 #   -y, --yes              nao pergunta nada, usa os padroes
-#   --desktop=NAME         ubuntu | cinnamon | mate | all | none
+#   --desktop=NAME         cinnamon | xfce | mate | all | none
 #   --dev=LIST             core,web,rust,go,java,db,browser (ou none)
 #   --geometry=WxH         resolucao inicial (default 1600x900)
 #   --password=PASS        senha do VNC (max. 8 caracteres)
@@ -55,7 +55,7 @@ TUNNEL="${TUNNEL:-1}"
 SSH_PUBKEY="${SSH_PUBKEY:-}"
 VNC_PASS="${VNC_PASS:-}"
 
-DESKTOP="ubuntu"
+DESKTOP="cinnamon"
 DEV_GROUPS="core web"
 MODE="install"
 DRY_RUN=0
@@ -145,11 +145,11 @@ Uso interativo:
   curl -fsSL <URL_RAW> | bash          # interativo se houver terminal; senao usa os padroes
 
 Uso nao interativo:
-  bash setup.sh --yes --desktop=ubuntu --dev=core,web
+  bash setup.sh --yes --desktop=cinnamon --dev=core,web
 
 Flags:
   -y, --yes              nao pergunta nada, usa os padroes
-  --desktop=NAME         ubuntu | cinnamon | mate | all | none
+  --desktop=NAME         cinnamon | xfce | mate | all | none
   --dev=LIST             core,web,rust,go,java,db,browser (ou none)
   --geometry=WxH         resolucao inicial (default 1600x900)
   --password=PASS        senha do VNC (max. 8 caracteres)
@@ -269,19 +269,22 @@ disk_free_mb() {
 
 session_installed_list() {
     local out=""
-    command -v startxfce4 >/dev/null 2>&1 && out="$out ubuntu"
+    command -v startxfce4 >/dev/null 2>&1 && out="$out xfce"
     command -v cinnamon-session >/dev/null 2>&1 && out="$out cinnamon"
     command -v mate-session >/dev/null 2>&1 && out="$out mate"
     printf '%s\n' "${out# }"
 }
 
 current_session() {
-    cat "$H/.dextermux/session" 2>/dev/null || echo "ubuntu"
+    local s
+    s=$(cat "$H/.dextermux/session" 2>/dev/null || echo "cinnamon")
+    if [ "$s" = "ubuntu" ]; then s="xfce"; fi
+    printf '%s\n' "$s"
 }
 
 session_available() {
     case "$1" in
-        ubuntu) command -v startxfce4 >/dev/null 2>&1 ;;
+        xfce|ubuntu) command -v startxfce4 >/dev/null 2>&1 ;;
         cinnamon) command -v cinnamon-session >/dev/null 2>&1 ;;
         mate) command -v mate-session >/dev/null 2>&1 ;;
         *) return 1 ;;
@@ -291,10 +294,10 @@ session_available() {
 # ---------------------------------------------------------------- tamanhos
 
 SIZE_BASE=260
-SIZE_UBUNTU=817
+SIZE_XFCE=739
 SIZE_CINNAMON=1691
 SIZE_MATE=1345
-SIZE_ALL=2256
+SIZE_ALL=2224
 SIZE_NONE=260
 SIZE_DEV_CORE=255
 SIZE_DEV_WEB=270
@@ -306,7 +309,7 @@ SIZE_DEV_BROWSER=1278
 
 desktop_size() {
     case "$1" in
-        ubuntu) printf '%s\n' "$SIZE_UBUNTU" ;;
+        xfce) printf '%s\n' "$SIZE_XFCE" ;;
         cinnamon) printf '%s\n' "$SIZE_CINNAMON" ;;
         mate) printf '%s\n' "$SIZE_MATE" ;;
         all) printf '%s\n' "$SIZE_ALL" ;;
@@ -363,7 +366,7 @@ estimated_total_mb() {
 # ---------------------------------------------------------------- pacotes
 
 PKGS_BASE="tigervnc openssh openssl-tool python net-tools cloudflared curl tar git"
-PKGS_UBUNTU="xfce4 xfdesktop xfce4-whiskermenu-plugin rofi plank-reloaded arc-gtk-theme picom gnome-terminal gnome-text-editor gnome-calculator gnome-screenshot dbus gsettings-desktop-schemas ttf-dejavu"
+PKGS_XFCE="xfce4 xfdesktop ttf-dejavu"
 PKGS_CINNAMON="cinnamon nemo cinnamon-session cinnamon-settings-daemon cinnamon-control-center mint-themes mint-y-icon-theme"
 PKGS_MATE="mate mate-applet-brisk-menu mate-tweak"
 PKGS_DEV_CORE="gh neovim tmux zsh starship ripgrep fd fzf jq lazygit eza bat zoxide htop micro rsync unzip wget"
@@ -399,7 +402,7 @@ install_pkgs() {
 
 desktop_pkg_list() {
     case "$1" in
-        ubuntu) printf '%s\n' "$PKGS_UBUNTU" ;;
+        xfce) printf '%s\n' "$PKGS_XFCE" ;;
         cinnamon) printf '%s\n' "$PKGS_CINNAMON" ;;
         mate) printf '%s\n' "$PKGS_MATE" ;;
         *) printf '\n' ;;
@@ -452,7 +455,7 @@ screen_resources() {
         err "espaco insuficiente: $DISK_FREE_MB MB livres, minimo $need MB"
         info "libere espaco ou escolha 'Sem desktop' no menu seguinte"
     elif [ "$DISK_FREE_MB" -lt 3500 ]; then
-        warn "espaco justo para o preset Ubuntu-like; 'Todas as tres' nao cabe"
+        warn "espaco justo para Cinnamon; 'Todas as tres' nao cabe"
     else
         ok "espaco suficiente para qualquer preset"
     fi
@@ -482,18 +485,18 @@ screen_desktop() {
         clear_screen
         banner
         section "Ambiente grafico"
-        printf '  1  %-38s %7s MB  %s\n' "Ubuntu-like (XFCE restilizado)" "~$SIZE_UBUNTU" "validado"
-        printf '  2  %-38s %7s MB  %s\n' "Cinnamon (Mint-like)" "~$SIZE_CINNAMON" "experimental"
+        printf '  1  %-38s %7s MB  %s\n' "Cinnamon (Mint-like)" "~$SIZE_CINNAMON" "padrao"
+        printf '  2  %-38s %7s MB  %s\n' "XFCE (visual padrao)" "~$SIZE_XFCE" "validado"
         printf '  3  %-38s %7s MB  %s\n' "MATE (classico)" "~$SIZE_MATE" "experimental"
-        printf '  4  %-38s %7s MB  %s\n' "Todas as tres (avaliacao)" "~$SIZE_ALL" "recomendado agora"
+        printf '  4  %-38s %7s MB  %s\n' "Todas as tres (avaliacao)" "~$SIZE_ALL" "comparar"
         printf '  5  %-38s %7s MB  %s\n' "Sem desktop (so servidor)" "~$SIZE_NONE" "leve"
-        printf '\n  %s1: sem painel XFCE, launcher de busca, dock e apps GNOME.%s\n' "$C_DIM" "$C_RESET"
-        printf '  %s2/3: nao validados neste aparelho; o instalador registra falhas e cai para Ubuntu-like.%s\n' "$C_DIM" "$C_RESET"
+        printf '\n  %s1: sessao completa do Linux Mint, sem tema extra.%s\n' "$C_DIM" "$C_RESET"
+        printf '  %s2: XFCE4 padrao, sem restilizacao.%s\n' "$C_DIM" "$C_RESET"
         printf '  %s4: instala as tres e permite alternar com "dextermux-session".%s\n' "$C_DIM" "$C_RESET"
         choice=$(ask "Escolha [1-5] (padrao 1):" "1")
         case "$choice" in
-            1) DESKTOP="ubuntu"; return 0 ;;
-            2) DESKTOP="cinnamon"; return 0 ;;
+            1) DESKTOP="cinnamon"; return 0 ;;
+            2) DESKTOP="xfce"; return 0 ;;
             3) DESKTOP="mate"; return 0 ;;
             4) DESKTOP="all"; return 0 ;;
             5) DESKTOP="none"; return 0 ;;
@@ -632,7 +635,7 @@ screen_confirm() {
         banner
         section "Resumo da instalacao"
         case "$DESKTOP" in
-            ubuntu) row "Desktop" "Ubuntu-like (XFCE restilizado)" ;;
+            xfce) row "Desktop" "XFCE (visual padrao)" ;;
             cinnamon) row "Desktop" "Cinnamon (experimental)" ;;
             mate) row "Desktop" "MATE (experimental)" ;;
             all) row "Desktop" "Todas as tres sessoes" ;;
@@ -682,7 +685,8 @@ export PATH="/data/data/com.termux/files/usr/bin:$PATH"
 export XDG_RUNTIME_DIR="$TMPDIR"
 
 DISP="${DISPLAY#:}"
-SESSION=$(cat "$HOME/.dextermux/session.$DISP" 2>/dev/null || cat "$HOME/.dextermux/session" 2>/dev/null || echo ubuntu)
+SESSION=$(cat "$HOME/.dextermux/session.$DISP" 2>/dev/null || cat "$HOME/.dextermux/session" 2>/dev/null || echo cinnamon)
+if [ "$SESSION" = "ubuntu" ]; then SESSION=xfce; fi
 mkdir -p "$HOME/.dextermux"
 echo "$SESSION" >"$HOME/.dextermux/running.$DISP"
 
@@ -696,19 +700,6 @@ case "$SESSION" in
     *) CMD=startxfce4 ;;
 esac
 
-if [ "$SESSION" = "ubuntu" ]; then
-    export GTK_THEME=Arc-Dark
-    gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
-    gsettings set org.gnome.desktop.interface gtk-theme 'Arc-Dark' 2>/dev/null || true
-    xfconf-query -c xsettings -p /Gtk/FontName -n -t string -s "Ubuntu 10" 2>/dev/null || true
-    xfconf-query -c xsettings -p /Xft/Antialias -n -t int -s 1 2>/dev/null || true
-    xfconf-query -c xsettings -p /Xft/Hinting -n -t int -s 1 2>/dev/null || true
-    xfconf-query -c xsettings -p /Xft/HintStyle -n -t string -s hintfull 2>/dev/null || true
-    xfconf-query -c xsettings -p /Xft/RGBA -n -t string -s rgb 2>/dev/null || true
-    ( sleep 2; setsid picom --config "$HOME/.config/picom.conf" >/dev/null 2>&1 & ) &
-    ( sleep 3; setsid plank >/dev/null 2>&1 & ) &
-fi
-
 "$CMD" &
 PID=$!
 i=0
@@ -720,8 +711,8 @@ done
 if kill -0 "$PID" 2>/dev/null; then
     wait "$PID"
 else
-    echo "$(date) sessao $SESSION falhou; usando ubuntu" >>"$TMPDIR/session.log"
-    echo ubuntu >"$HOME/.dextermux/running.$DISP"
+    echo "$(date) sessao $SESSION falhou; usando xfce" >>"$TMPDIR/session.log"
+    echo xfce >"$HOME/.dextermux/running.$DISP"
     exec startxfce4
 fi
 EOF
@@ -750,7 +741,7 @@ if [ -n "$SESSION" ]; then
     echo "$SESSION" >"$DIR/session.$DISP"
 fi
 
-EFFECTIVE=$(cat "$DIR/session.$DISP" 2>/dev/null || cat "$DIR/session" 2>/dev/null || echo ubuntu)
+EFFECTIVE=$(cat "$DIR/session.$DISP" 2>/dev/null || cat "$DIR/session" 2>/dev/null || echo cinnamon)
 if [ "$EFFECTIVE" = "none" ]; then
     echo "sem desktop instalado; rode o setup e escolha uma sessao grafica"
     exit 1
@@ -783,7 +774,7 @@ if [ "$DISP" = "1" ] && [ "__TUNNEL__" = "1" ] && ! pgrep -f "[c]loudflared tunn
     grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" "$TMPDIR/cf.log" | tail -1 >"$HOME/tunnel-url.txt"
 fi
 
-echo "VNC $VNCPORT | noVNC $PORT | sessao: $(cat "$DIR/session.$DISP" 2>/dev/null || cat "$DIR/session" 2>/dev/null || echo ubuntu)"
+echo "VNC $VNCPORT | noVNC $PORT | sessao: $(cat "$DIR/session.$DISP" 2>/dev/null || cat "$DIR/session" 2>/dev/null || echo cinnamon)"
 EOF
     sed -i "s/__GEOMETRY__/$GEOMETRY/g; s/__TUNNEL__/$TUNNEL/g" "$H/start-desktop.sh"
     chmod +x "$H/start-desktop.sh"
@@ -796,7 +787,8 @@ write_show_access() {
 # Gerado por dextermux. Mostra IP, portas, sessao e estado dos servicos.
 IP=$(ifconfig 2>/dev/null | sed -n '/^wlan0/,/^$/s/.*inet \([0-9.]*\).*/\1/p' | head -1)
 [ -z "$IP" ] && IP="IP-DO-CELULAR"
-SESSION=$(cat "$HOME/.dextermux/session" 2>/dev/null || echo ubuntu)
+SESSION=$(cat "$HOME/.dextermux/session" 2>/dev/null || echo cinnamon)
+if [ "$SESSION" = "ubuntu" ]; then SESSION=xfce; fi
 
 echo ""
 echo "=== Acesso remoto ==="
@@ -854,17 +846,22 @@ TXT
 have() { command -v "$1" >/dev/null 2>&1; }
 installed() {
     case "$1" in
-        ubuntu) have startxfce4 ;;
+        xfce|ubuntu) have startxfce4 ;;
         cinnamon) have cinnamon-session ;;
         mate) have mate-session ;;
         *) return 1 ;;
     esac
 }
-current() { cat "$FILE" 2>/dev/null || echo ubuntu; }
+current() {
+    local s
+    s=$(cat "$FILE" 2>/dev/null || echo cinnamon)
+    if [ "$s" = "ubuntu" ]; then s=xfce; fi
+    printf '%s\n' "$s"
+}
 
 list_sessions() {
     local s
-    for s in ubuntu cinnamon mate; do
+    for s in cinnamon xfce mate; do
         if installed "$s"; then
             if [ "$s" = "$(current)" ]; then
                 printf '  %-10s instalada  padrao\n' "$s"
@@ -916,6 +913,7 @@ case "$cmd" in
     set)
         name="${2:-}"
         installed "$name" || { echo "sessao nao instalada: $name" >&2; exit 1; }
+        if [ "$name" = "ubuntu" ]; then name=xfce; fi
         echo "$name" >"$FILE"
         rm -f "$DIR/session.1"
         echo "sessao padrao: $name"
@@ -924,6 +922,7 @@ case "$cmd" in
     try)
         name="${2:-}"
         disp="${3:-2}"
+        if [ "$name" = "ubuntu" ]; then name=xfce; fi
         installed "$name" || { echo "sessao nao instalada: $name" >&2; exit 1; }
         case "$disp" in
             ""|*[!0-9]*) echo "display invalido: $disp" >&2; exit 1 ;;
@@ -947,13 +946,15 @@ case "$cmd" in
     remove)
         name="${2:-}"
         case "$name" in
+            xfce) pkgs="xfce4 xfdesktop xfce4-panel xfce4-session xfce4-settings xfce4-terminal xfwm4 xfconf thunar" ;;
             cinnamon) pkgs="cinnamon cinnamon-session cinnamon-settings-daemon cinnamon-control-center cinnamon-desktop cinnamon-menus muffin cjs nemo mint-themes mint-y-icon-theme" ;;
             mate) pkgs="mate mate-session-manager mate-panel mate-settings-daemon mate-control-center mate-terminal marco caja pluma mate-applet-brisk-menu mate-tweak mate-menus mate-desktop mate-utils mate-media mate-power-manager mate-screensaver mate-notification-daemon mate-themes mate-icon-theme" ;;
-            *) echo "remocao suportada apenas para cinnamon e mate" >&2; exit 1 ;;
+            *) echo "remocao suportada para xfce, cinnamon e mate" >&2; exit 1 ;;
         esac
+        if [ "$name" = "ubuntu" ]; then name=xfce; fi
         if [ "$(current)" = "$name" ]; then
-            echo "sessao ativa; trocando para ubuntu antes de remover"
-            echo ubuntu >"$FILE"
+            echo "sessao ativa; trocando para cinnamon antes de remover"
+            echo cinnamon >"$FILE"
             restart_vnc
         fi
         echo "pacotes a remover: $pkgs"
@@ -982,199 +983,6 @@ esac
 EOF
     chmod +x "$H/.dextermux/session-manager.sh"
     ln -sf "$H/.dextermux/session-manager.sh" "$P/bin/dextermux-session"
-}
-
-write_theme_helper() {
-    cat >"$H/.dextermux/theme.sh" <<'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-# Gerado por dextermux. Reaplica o visual Ubuntu-like sem reinstalar pacotes.
-set -eu
-H="$HOME"
-P="${PREFIX:-/data/data/com.termux/files/usr}"
-CONF="$H/.config"
-mkdir -p "$CONF/xfce4/xfconf/xfce-perchannel-xml" "$CONF/rofi" "$CONF/plank/dock1/launchers" "$CONF/autostart" "$H/.local/share/applications" "$H/.dextermux"
-
-cat >"$H/.local/share/applications/dextermux-apps.desktop" <<DESK
-[Desktop Entry]
-Type=Application
-Name=Aplicativos
-Comment=Buscar aplicativos
-Exec=rofi -show drun -theme "$CONF/rofi/config.rasi"
-Icon=view-app-grid-symbolic
-Terminal=false
-Categories=System;
-DESK
-
-for item in gnome-terminal thunar; do
-    if [ -f "$P/share/applications/$item.desktop" ]; then
-        cat >"$CONF/plank/dock1/launchers/$item.dockitem" <<DOCK
-[PlankDockItemPreferences]
-Launcher=file://$P/share/applications/$item.desktop
-DOCK
-    fi
-done
-
-cat >"$CONF/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml" <<PANEL
-<?xml version="1.0" encoding="UTF-8"?>
-
-<channel name="xfce4-panel" version="1.0">
-  <property name="configdir" type="string" value="$CONF/xfce4/panel"/>
-  <property name="panels" type="uint" value="1">
-    <property name="panel-1" type="empty">
-      <property name="autohide-behavior" type="uint" value="0"/>
-      <property name="background-alpha" type="uint" value="92"/>
-      <property name="background-rgba" type="array">
-        <value type="double" value="0.086"/>
-        <value type="double" value="0.086"/>
-        <value type="double" value="0.117"/>
-        <value type="double" value="0.941"/>
-      </property>
-      <property name="background-style" type="uint" value="1"/>
-      <property name="length" type="uint" value="100"/>
-      <property name="length-adjust" type="bool" value="true"/>
-      <property name="mode" type="uint" value="0"/>
-      <property name="position" type="string" value="p=6;x=0;y=0"/>
-      <property name="position-locked" type="bool" value="true"/>
-      <property name="size" type="uint" value="30"/>
-      <property name="size-max" type="uint" value="32"/>
-      <property name="plugin-ids" type="array">
-        <value type="int" value="1"/>
-        <value type="int" value="2"/>
-        <value type="int" value="3"/>
-        <value type="int" value="4"/>
-        <value type="int" value="5"/>
-      </property>
-    </property>
-  </property>
-  <property name="plugins" type="empty">
-    <property name="plugin-1" type="string" value="launcher">
-      <property name="items" type="array">
-        <value type="string" value="dextermux-apps.desktop"/>
-      </property>
-    </property>
-    <property name="plugin-2" type="string" value="tasklist">
-      <property name="flat-buttons" type="bool" value="true"/>
-      <property name="show-handle" type="bool" value="false"/>
-      <property name="show-labels" type="bool" value="false"/>
-    </property>
-    <property name="plugin-3" type="string" value="separator">
-      <property name="expand" type="bool" value="true"/>
-      <property name="style" type="uint" value="0"/>
-    </property>
-    <property name="plugin-4" type="string" value="systray">
-      <property name="known-legacy-items" type="array">
-        <value type="string" value="plank"/>
-      </property>
-    </property>
-    <property name="plugin-5" type="string" value="clock">
-      <property name="digital-layout" type="uint" value="3"/>
-      <property name="digital-time-format" type="string" value="%H:%M"/>
-      <property name="digital-date-format" type="string" value="%a, %d %b"/>
-    </property>
-  </property>
-</channel>
-PANEL
-
-cat >"$CONF/rofi/config.rasi" <<'RASI'
-configuration {
-  modi: "drun,run,window";
-  font: "Ubuntu 11";
-  show-icons: true;
-  drun-display-format: "{name}";
-  display-drun: "Aplicativos";
-  display-run: "Executar";
-  display-window: "Janelas";
-  terminal: "gnome-terminal";
-}
-window { width: 44%; border-radius: 12px; background-color: #16161e; }
-inputbar { padding: 12px; background-color: #1e1e28; border-radius: 10px; }
-listview { lines: 8; columns: 1; }
-element { padding: 8px; border-radius: 8px; }
-element selected { background-color: #2a2a3a; }
-RASI
-
-cat >"$CONF/picom.conf" <<'PICOM'
-backend = "xrender";
-vsync = false;
-shadow = true;
-shadow-radius = 12;
-shadow-opacity = 0.35;
-shadow-offset-x = -8;
-shadow-offset-y = -8;
-corner-radius = 12;
-rounded-corners-exclude = [ "class_g = 'Plank'" ];
-blur-background = false;
-mark-wmwin-focused = true;
-mark-ovredir-focused = true;
-PICOM
-
-cat >"$CONF/plank/dock1/settings" <<'PLANK'
-[PlankDockPreferences]
-Alignment=3
-AutoHideDelay=200
-HideMode=1
-IconSize=48
-LockItems=false
-PinnedOnly=false
-Theme=Transparent
-ZoomEnabled=true
-ZoomPercent=115
-PLANK
-
-cat >"$H/.dextermux/wallpaper.svg" <<'WALL'
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#2b1b3d"/>
-      <stop offset="55%" stop-color="#1b2333"/>
-      <stop offset="100%" stop-color="#0e0f14"/>
-    </linearGradient>
-  </defs>
-  <rect width="1600" height="900" fill="url(#g)"/>
-</svg>
-WALL
-
-if command -v xfconf-query >/dev/null 2>&1; then
-    xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Arc-Dark" 2>/dev/null || true
-    xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Adwaita" 2>/dev/null || true
-    xfconf-query -c xsettings -p /Gtk/FontName -n -t string -s "Ubuntu 10" 2>/dev/null || true
-    xfconf-query -c xsettings -p /Xft/Antialias -n -t int -s 1 2>/dev/null || true
-    xfconf-query -c xsettings -p /Xft/Hinting -n -t int -s 1 2>/dev/null || true
-    xfconf-query -c xsettings -p /Xft/HintStyle -n -t string -s hintfull 2>/dev/null || true
-    xfconf-query -c xsettings -p /Xft/RGBA -n -t string -s rgb 2>/dev/null || true
-    if command -v xfce4-panel >/dev/null 2>&1 && pgrep -x xfce4-panel >/dev/null 2>&1; then
-        xfce4-panel -r >/dev/null 2>&1 || true
-    fi
-    props=$(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep 'last-image' || true)
-    for p in $props; do
-        xfconf-query -c xfce4-desktop -p "$p" -s "$H/.dextermux/wallpaper.svg" 2>/dev/null || true
-    done
-fi
-
-echo "tema aplicado em $CONF"
-EOF
-    chmod +x "$H/.dextermux/theme.sh"
-    ln -sf "$H/.dextermux/theme.sh" "$P/bin/dextermux-theme"
-}
-
-install_fonts() {
-    local dir="$H/.local/share/fonts" base f
-    base="https://github.com/google/fonts/raw/main/ufl/ubuntu"
-    mkdir -p "$dir"
-    for f in Ubuntu-Regular.ttf Ubuntu-Medium.ttf Ubuntu-Bold.ttf; do
-        if [ -s "$dir/$f" ]; then
-            continue
-        fi
-        if ! curl -fsSL "$base/$f" -o "$dir/$f" 2>/dev/null; then
-            rm -f "$dir/$f"
-            warn "fonte $f indisponivel; usando DejaVu"
-            return 0
-        fi
-    done
-    if command -v fc-cache >/dev/null 2>&1; then
-        fc-cache -f >/dev/null 2>&1 || true
-    fi
-    ok "fontes Ubuntu instaladas"
 }
 
 write_bashrc_block() {
@@ -1244,7 +1052,7 @@ write_novnc() {
 write_session_default() {
     mkdir -p "$H/.dextermux"
     if [ "$DESKTOP" = "all" ]; then
-        printf 'ubuntu\n' >"$H/.dextermux/session"
+        printf 'cinnamon\n' >"$H/.dextermux/session"
     elif [ "$DESKTOP" = "none" ]; then
         printf 'none\n' >"$H/.dextermux/session"
     else
@@ -1272,27 +1080,23 @@ run_packages() {
 
     step "Sessao grafica"
     case "$DESKTOP" in
-        ubuntu)
-            # shellcheck disable=SC2086
-            install_pkgs $PKGS_UBUNTU
-            install_fonts
-            ;;
         cinnamon)
             # shellcheck disable=SC2086
             install_pkgs $PKGS_CINNAMON
-            install_fonts
+            ;;
+        xfce)
+            # shellcheck disable=SC2086
+            install_pkgs $PKGS_XFCE
             ;;
         mate)
             # shellcheck disable=SC2086
             install_pkgs $PKGS_MATE
-            install_fonts
             ;;
         all)
             # shellcheck disable=SC2086
-            install_pkgs $PKGS_UBUNTU
-            install_fonts
-            # shellcheck disable=SC2086
             install_pkgs $PKGS_CINNAMON
+            # shellcheck disable=SC2086
+            install_pkgs $PKGS_XFCE
             # shellcheck disable=SC2086
             install_pkgs $PKGS_MATE
             ;;
@@ -1352,9 +1156,6 @@ run_install() {
     write_start_desktop
     write_show_access
     write_session_manager
-    if [ "$DESKTOP" != "none" ]; then
-        write_theme_helper
-    fi
 
     run_dev
 
@@ -1391,9 +1192,6 @@ repair_only() {
     write_start_desktop
     write_show_access
     write_session_manager
-    if [ "$DESKTOP" != "none" ]; then
-        write_theme_helper
-    fi
     step "Banner do shell"
     write_bashrc_block
     step "Autostart no boot"
@@ -1434,8 +1232,13 @@ print_summary() {
     printf '  %-22s %s\n' "url" "mostra IP, portas e estado"
     printf '  %-22s %s\n' "dextermux-session" "lista e troca a sessao grafica"
     printf '  %-22s %s\n' "dextermux-session try X" "testa uma sessao em paralelo na porta 6081"
-    printf '  %-22s %s\n' "dextermux-theme" "reaplica o visual Ubuntu-like"
-    printf '  %-22s %s\n' "dextermux-session remove X" "remove pacotes de cinnamon ou mate"
+    printf '  %-22s %s\n' "dextermux-session remove X" "remove pacotes de xfce, cinnamon ou mate"
+
+    if [ -f "$H/.dextermux/theme.sh" ]; then
+        section "Restos do preset antigo"
+        printf '  O preset restilizado foi removido do script. Para limpar o aparelho,\n'
+        printf '  veja a secao "Limpeza do preset antigo" no README.\n'
+    fi
 
     section "Pendencias manuais"
     printf '  1. Instalar o app Termux:Boot (F-Droid/GitHub) e abrir uma vez.\n'
@@ -1450,8 +1253,8 @@ print_summary() {
 
 print_list() {
     section "Presets de desktop"
-    printf '  %-34s %7s MB\n' "ubuntu  (XFCE restilizado)" "$SIZE_UBUNTU"
-    printf '  %-34s %7s MB\n' "cinnamon" "$SIZE_CINNAMON"
+    printf '  %-34s %7s MB\n' "cinnamon  (padrao)" "$SIZE_CINNAMON"
+    printf '  %-34s %7s MB\n' "xfce  (visual padrao)" "$SIZE_XFCE"
     printf '  %-34s %7s MB\n' "mate" "$SIZE_MATE"
     printf '  %-34s %7s MB\n' "all  (as tres)" "$SIZE_ALL"
     printf '  %-34s %7s MB\n' "none  (so servidor)" "$SIZE_NONE"
@@ -1475,10 +1278,10 @@ print_dry_run() {
     row "Estimativa" "~$(estimated_total_mb) MB"
     printf '\n  Pacotes base: %s\n' "$PKGS_BASE"
     case "$DESKTOP" in
-        ubuntu) printf '  Pacotes desktop: %s\n' "$PKGS_UBUNTU" ;;
+        xfce) printf '  Pacotes desktop: %s\n' "$PKGS_XFCE" ;;
         cinnamon) printf '  Pacotes desktop: %s\n' "$PKGS_CINNAMON" ;;
         mate) printf '  Pacotes desktop: %s\n' "$PKGS_MATE" ;;
-        all) printf '  Pacotes desktop: %s %s %s\n' "$PKGS_UBUNTU" "$PKGS_CINNAMON" "$PKGS_MATE" ;;
+        all) printf '  Pacotes desktop: %s %s %s\n' "$PKGS_CINNAMON" "$PKGS_XFCE" "$PKGS_MATE" ;;
         *) printf '  Pacotes desktop: nenhum\n' ;;
     esac
     if [ -n "$DEV_GROUPS" ]; then
@@ -1487,14 +1290,8 @@ print_dry_run() {
     printf '\n  Arquivos que seriam gravados:\n'
     printf '    ~/.vnc/xstartup\n    ~/.vnc/passwd\n    ~/start-desktop.sh\n'
     printf '    ~/show-access.sh\n    ~/.dextermux/session\n    ~/.dextermux/session-manager.sh\n'
-    if [ "$DESKTOP" != "none" ]; then
-        printf '    ~/.dextermux/theme.sh\n    ~/.config/rofi/config.rasi\n    ~/.config/picom.conf\n'
-        printf '    ~/.config/plank/dock1/settings\n    ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml\n'
-    fi
     printf '    ~/.termux/boot/start-services.sh\n    ~/.bashrc (bloco dextermux)\n\n'
 }
-
-# ---------------------------------------------------------------- main
 
 parse_args() {
     while [ $# -gt 0 ]; do
@@ -1517,9 +1314,10 @@ parse_args() {
         esac
         shift
     done
+    if [ "$DESKTOP" = "ubuntu" ]; then DESKTOP="xfce"; fi
     case "$DESKTOP" in
-        ubuntu|cinnamon|mate|all|none) ;;
-        *) die "desktop invalido: $DESKTOP (ubuntu|cinnamon|mate|all|none)" ;;
+        xfce|cinnamon|mate|all|none) ;;
+        *) die "desktop invalido: $DESKTOP (cinnamon|xfce|mate|all|none)" ;;
     esac
     DEV_GROUPS=$(printf '%s' "$DEV_GROUPS" | tr ',' ' ')
     if [ "$DEV_GROUPS" = "none" ]; then
@@ -1549,7 +1347,7 @@ main() {
     if [ "$MODE" = "repair" ]; then
         DESKTOP=$(current_session)
         if [ "$DESKTOP" = "none" ]; then
-            DESKTOP="ubuntu"
+            DESKTOP="cinnamon"
         fi
         repair_only
         print_summary

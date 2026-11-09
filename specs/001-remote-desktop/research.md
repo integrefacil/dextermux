@@ -85,7 +85,7 @@ Registro das investigacoes que levaram ao `setup.sh`. Cada item tem sintoma, cau
 - **Fato**: `plank` nao existe; o fork disponivel e `plank-reloaded`.
 - **Fato**: `picom` esta no x11-repo com backend `xrender`, suficiente para sombra e cantos arredondados sem GL.
 - **Fato**: `muffin` depende de `opengl`, que puxa `mesa` + `libllvm` (169 MB). O TigerVNC ja depende de `opengl`, entao o custo extra de GL para Cinnamon e menor que a soma isolada.
-- **Decisao**: preset `ubuntu` restiliza o XFCE (unico caminho validado) e Cinnamon/MATE entram como experimentais com fallback de 15 s.
+- **Decisao original (descartada)**: restilizar o XFCE com rofi, plank, picom, Arc e apps GNOME. O visual nao agradou o usuario e o preset foi removido na v1.2.0. Ficou o XFCE padrao (`xfce4` + `xfdesktop`) e Cinnamon virou a sessao padrao, com fallback de 15 s para `xfce`.
 
 ## 15. Tamanhos medidos (v2.0.0)
 
@@ -93,10 +93,10 @@ Resolucao recursiva de `Depends` sobre os indices `termux-main` e `termux-x11` (
 
 | Preset | Pacotes | Instalado |
 |--------|---------|-----------|
-| ubuntu | 245 | ~817 MB |
+| xfce | 191 | ~739 MB |
 | cinnamon | 311 | ~1691 MB |
 | mate | 269 | ~1345 MB |
-| all | 412 | ~2256 MB |
+| all | 387 | ~2224 MB |
 | none | - | ~260 MB |
 
 Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db ~296 MB, browser ~1278 MB.

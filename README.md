@@ -23,22 +23,15 @@ Nao usa emojis, nao depende de `dialog`/`whiptail` e funciona sem terminal inter
 
 | Opcao | Descricao | Disco | Estado |
 |-------|-----------|-------|--------|
-| `ubuntu` | XFCE restilizado: barra unica, launcher de busca (rofi), dock (plank), tema Arc-Dark, apps GNOME | ~817 MB | validado |
-| `cinnamon` | Sessao Cinnamon (linha do Linux Mint) | ~1691 MB | experimental |
+| `cinnamon` | Sessao Cinnamon (linha do Linux Mint), padrao | ~1691 MB | validado |
+| `xfce` | XFCE4 padrao, sem restilizacao | ~739 MB | validado |
 | `mate` | Sessao MATE (visual classico do Ubuntu) | ~1345 MB | experimental |
-| `all` | As tres, para comparar antes de decidir | ~2256 MB | recomendado na avaliacao |
+| `all` | As tres, para comparar antes de decidir | ~2224 MB | comparacao |
 | `none` | Sem desktop, apenas sshd e ferramentas | ~260 MB | validado |
 
-O preset `ubuntu` remove o painel duplo e o menu em arvore do XFCE:
+O preset `xfce` instala apenas `xfce4` e `xfdesktop`, sem tema, dock, compositor ou apps extras. A sessao padrao e `cinnamon`.
 
-- `rofi -show drun` na tecla Super, com busca por texto
-- barra superior de 30 px com janelas a esquerda e relogio a direita
-- dock inferior com autohide via `plank`
-- sombras e cantos arredondados via `picom` (backend `xrender`, sem blur)
-- `gnome-terminal`, `gnome-text-editor`, `gnome-calculator` e `gnome-screenshot`
-- fonte Ubuntu baixada do Google Fonts, com `DejaVu` como fallback
-
-Cinnamon e MATE nao foram validados no aparelho. O `~/.vnc/xstartup` detecta sessao que morre em menos de 15 segundos, registra em `$TMPDIR/session.log` e cai para `ubuntu`.
+MATE ainda nao foi validado no aparelho. O `~/.vnc/xstartup` detecta sessao que morre em menos de 15 segundos, registra em `$TMPDIR/session.log` e cai para `xfce`.
 
 ## Acesso
 
@@ -53,21 +46,20 @@ Cinnamon e MATE nao foram validados no aparelho. O `~/.vnc/xstartup` detecta ses
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e cloudflared |
 | `url` | imprime as URLs e o estado dos servicos |
-| `dextermux-session` | mostra a sessao atual e as instaladas |
+| `dextermux-session` | mostra a sessao atual, as instaladas e os displays ativos |
 | `dextermux-session set cinnamon` | troca a sessao padrao e reinicia o VNC |
 | `dextermux-session try mate` | sobe a sessao no display `:2` (noVNC 6081), reiniciando-o se preciso |
 | `dextermux-session try mate 3` | sobe a sessao em outro display (`:3`, noVNC 6082) |
 | `dextermux-session stop` | encerra o display `:2` |
 | `dextermux-session stop 3` | encerra o display `:3` |
-| `dextermux-session remove cinnamon` | remove os pacotes exclusivos da sessao |
-| `dextermux-theme` | reaplica o visual Ubuntu-like sem reinstalar pacotes |
+| `dextermux-session remove cinnamon` | remove os pacotes exclusivos da sessao (`xfce`, `cinnamon` ou `mate`) |
 
 ## Flags do instalador
 
 | Flag | Efeito |
 |------|--------|
 | `-y`, `--yes` | nao pergunta nada, usa os padroes |
-| `--desktop=NAME` | `ubuntu`, `cinnamon`, `mate`, `all` ou `none` |
+| `--desktop=NAME` | `cinnamon` (padrao), `xfce`, `mate`, `all` ou `none` |
 | `--dev=LIST` | `core`, `web`, `rust`, `go`, `java`, `db`, `browser` ou `none` |
 | `--geometry=WxH` | resolucao inicial (default `1600x900`) |
 | `--password=PASS` | senha do VNC (max. 8 caracteres) |
@@ -105,7 +97,7 @@ curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash
 
 # automatico com escolhas
 curl -fsSL https://integrefacil.github.io/dextermux/setup.sh \
-  | VNC_PASS=MinhaSen bash -s -- --desktop=ubuntu --dev=core,web
+  | VNC_PASS=MinhaSen bash -s -- --desktop=cinnamon --dev=core,web
 ```
 
 A pagina publicada serve o instalador em `/setup.sh`. O arquivo `docs/setup.sh` e uma copia
@@ -113,6 +105,23 @@ sincronizada automaticamente por CI (`.github/workflows/sync-setup.yml`) a cada 
 A fonte canonica continua sendo o `setup.sh` da raiz.
 
 Em `curl | bash` o stdin e o proprio script, entao o instalador abre `/dev/tty` para ler as respostas sem consumir o codigo. Sem terminal disponivel, ele usa os padroes.
+
+## Limpeza do preset antigo
+
+Se voce instalou a versao com XFCE restilizado (rofi, plank, picom, Arc, apps GNOME), o script nao
+remove nada sozinho. Para limpar o aparelho:
+
+```bash
+rm -f ~/.dextermux/theme.sh ~/.dextermux/wallpaper.svg "$PREFIX/bin/dextermux-theme"
+rm -rf ~/.config/rofi ~/.config/plank
+rm -f ~/.config/picom.conf ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml
+rm -f ~/.local/share/fonts/Ubuntu-*.ttf
+pkg uninstall -y rofi plank-reloaded picom arc-gtk-theme gnome-terminal gnome-text-editor gnome-calculator gnome-screenshot gsettings-desktop-schemas
+pkg autoremove -y
+pkg clean
+```
+
+A sessao `ubuntu` antiga passa a ser lida como `xfce`, entao nao e preciso mexer em `~/.dextermux/session`.
 
 ## Pendencias manuais
 

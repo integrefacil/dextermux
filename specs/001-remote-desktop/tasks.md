@@ -77,16 +77,18 @@
 
 ## Phase 10: Sessoes e visual (v2.0.0)
 
-- [x] T044 Preset `ubuntu`: painel unico, rofi, plank-reloaded, picom, Arc-Dark, Adwaita, apps GNOME e fonte Ubuntu
+- [x] T044 ~~Preset `ubuntu` restilizado~~ (removido na v1.2.0; virou `xfce` padrao com `xfce4` e `xfdesktop`)
 - [x] T045 Presets `cinnamon` e `mate` marcados como experimentais
-- [x] T046 Preset `all` com as tres sessoes e default `ubuntu`
+- [x] T046 Preset `all` com as tres sessoes e default `cinnamon`
 - [x] T047 `~/.dextermux/session` e override por display
 - [x] T048 `dextermux-session` com `list`, `set`, `try`, `stop` e `remove`
-- [x] T049 `dextermux-theme` para reaplicar o visual sem reinstalar
+- [x] T049 ~~`dextermux-theme`~~ (removido na v1.2.0 junto com o preset restilizado)
 - [x] T050 Fallback de 15 s para sessao que falha, com log em `$TMPDIR/session.log`
 - [x] T051 `start-desktop.sh` parametrizado por display (6080/6081, 5901/5902)
 - [x] T052 Atualizar README, quickstart, contrato CLI, spec, plano e constitution 1.1.0
-- [ ] T053 Validar Cinnamon e MATE no aparelho e promover ou remover o preset
+- [x] T053 Validar Cinnamon no aparelho (aprovado pelo usuario)
+- [ ] T054 Validar MATE no aparelho e promover ou remover o preset
+- [x] T055 Trocar o padrao para `cinnamon` e remover o preset restilizado
 - [x] T035 `specs/001-remote-desktop/quickstart.md`
 - [x] T036 `specs/001-remote-desktop/contracts/cli-contract.md`
 

@@ -6,12 +6,12 @@
 
 ## Summary
 
-Um unico `setup.sh`, executavel por `curl -fsSL <url> | bash`, instala e configura um desktop Linux acessivel por VNC local, noVNC no navegador e tunel HTTPS do Cloudflare, com banner de URLs ao abrir o Termux, comandos `desktop`/`url`/`dextermux-session`/`dextermux-theme` e autostart no boot. A versao 2.0.0 adiciona diagnostico de recursos antes de qualquer download, menus numerados de escolha (sessao grafica e perfis de desenvolvimento), preset `ubuntu` que substitui os menus do XFCE por launcher de busca, e suporte a Cinnamon e MATE com troca e teste em paralelo. O fluxo evita `xrdp` (pacote quebrado no Termux) e reduz o atrito de reinstalacao a um comando.
+Um unico `setup.sh`, executavel por `curl -fsSL <url> | bash`, instala e configura um desktop Linux acessivel por VNC local, noVNC no navegador e tunel HTTPS do Cloudflare, com banner de URLs ao abrir o Termux, comandos `desktop`/`url`/`dextermux-session` e autostart no boot. A versao 2.0.0 adiciona diagnostico de recursos antes de qualquer download, menus numerados de escolha (sessao grafica e perfis de desenvolvimento), Cinnamon como sessao padrao, XFCE padrao sem restilizacao e suporte a MATE com troca e teste em paralelo. O fluxo evita `xrdp` (pacote quebrado no Termux) e reduz o atrito de reinstalacao a um comando.
 
 ## Technical Context
 
 **Language/Version**: Shell script (bash/sh do Termux), alvo aarch64.
-**Primary Dependencies**: Termux `x11-repo`, `xfce4` (4.20), `xfdesktop`, `rofi`, `plank-reloaded`, `picom`, `arc-gtk-theme`, `gnome-terminal`, `tigervnc` (Xvnc 1.16.2), `openssh`, `openssl-tool`, `python` (3.14), `net-tools`, `cloudflared` (2026.10.7), `git`, `curl`, `tar`; opcionais `cinnamon`, `nemo`, `mate`.
+**Primary Dependencies**: Termux `x11-repo`, `cinnamon`, `nemo`, `xfce4` (4.20), `xfdesktop`, `tigervnc` (Xvnc 1.16.2), `openssh`, `openssl-tool`, `python` (3.14), `net-tools`, `cloudflared` (2026.10.7), `git`, `curl`, `tar`; opcionais `mate`.
 **Storage**: Arquivos de configuracao no `$HOME` do Termux; sem banco de dados.
 **Testing**: `bash -n` para sintaxe; `--dry-run` para conferir o plano; `sh -n`/`bash -n` nos scripts gerados; execucao real idempotente no dispositivo; verificacao de portas (8022/5901/6080/6081) e HTTP 200 na URL publica.
 **Target Platform**: Termux aarch64, Android 13+ (validado em Samsung Galaxy A15, Android 15).
@@ -57,19 +57,13 @@ setup.sh                     # instalador unico (curl | bash)
 Arquivos gerados no dispositivo:
 
 ```text
-~/.vnc/xstartup              # escolhe a sessao e sobe com fallback para ubuntu
+~/.vnc/xstartup              # escolhe a sessao e sobe com fallback para xfce
 ~/.vnc/passwd                # senha VncAuth (8 chars)
 ~/start-desktop.sh           # sobe sshd + Xvnc + websockify + cloudflared (por display)
 ~/show-access.sh             # banner de URLs e sessao atual
-~/.dextermux/session         # sessao padrao (ubuntu|cinnamon|mate|none)
+~/.dextermux/session         # sessao padrao (cinnamon|xfce|mate|none)
 ~/.dextermux/session.<disp>  # override por display (usado no teste :2)
 ~/.dextermux/session-manager.sh  # atalho dextermux-session
-~/.dextermux/theme.sh        # atalho dextermux-theme
-~/.config/rofi/config.rasi   # launcher de busca
-~/.config/picom.conf         # sombras e cantos arredondados
-~/.config/plank/dock1/settings
-~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml
-~/.local/share/fonts/        # Ubuntu Regular/Medium/Bold
 ~/.termux/boot/start-services.sh
 ~/noVNC/                     # noVNC 1.5.0
 ~/tunnel-url.txt             # ultima URL publica
@@ -77,7 +71,6 @@ Arquivos gerados no dispositivo:
 $PREFIX/bin/desktop          # atalho -> start-desktop.sh
 $PREFIX/bin/url              # atalho -> show-access.sh
 $PREFIX/bin/dextermux-session
-$PREFIX/bin/dextermux-theme
 ```
 
 **Structure Decision**: projeto single-file (installer). Os helpers sao gerados pelo propio instalador para manter um unico artefato distribuivel.
@@ -90,8 +83,7 @@ $PREFIX/bin/dextermux-theme
 | `start-desktop.sh` | `termux-wake-lock`, sshd, limpar locks, Xvnc, websockify, cloudflared; aceita display e sessao |
 | `show-access.sh` | calcular IP por `ifconfig`, checar processos e imprimir URLs, sessao e display de teste |
 | `dextermux-session` | listar, trocar, testar em `:2` e remover sessoes |
-| `dextermux-theme` | reaplicar painel, rofi, picom, plank, fontes e papel de parede |
-| `~/.vnc/xstartup` | dbus, tema, picom/plank (so no `ubuntu`), sessao com fallback de 15 s |
+| `~/.vnc/xstartup` | dbus, sessao escolhida e fallback de 15 s para `xfce` |
 | `~/.bashrc` | autostart em background + banner (bloco com marcadores) |
 | `~/.termux/boot/start-services.sh` | chamar `start-desktop.sh` no boot |
 
@@ -106,8 +98,8 @@ $PREFIX/bin/dextermux-theme
 7. **Banner com auto-start**: como o Android mata processos, abrir o Termux religa o ambiente e informa as URLs.
 8. **Cloudflare quick tunnel**: gratuito e sem limite pratico de banda; URL efemera. Named tunnel exige dominio e fica como evolucao.
 9. **Interatividade por `/dev/tty`**: em `curl | bash` o stdin e o proprio script; ler de `/dev/tty` evita bufferizar o codigo e quebrar a execucao. Sem TTY, o instalador segue com os padroes.
-10. **Preset `ubuntu` sem menus do XFCE**: painel unico de 30 px (`p=6`, topo), launcher `rofi -show drun` na tecla Super, dock `plank-reloaded`, `picom` com backend `xrender` e sem blur. GNOME Shell, mutter e nautilus nao existem no repositorio, entao o visual vem de tema (Arc-Dark), icones Adwaita, apps GTK4/libadwaita e fonte Ubuntu.
-11. **`plank-reloaded` em vez de `plank`**: o pacote `plank` nao existe no Termux; `plank-reloaded` e o fork disponivel.
+10. **Cinnamon como padrao**: a sessao do Mint entrega um desktop completo sem pacotes de tema extras e foi validada no aparelho. O preset `xfce` instala apenas `xfce4` e `xfdesktop`, porque a restilizacao anterior (rofi, plank, picom, Arc, apps GNOME) foi descartada por nao agradar o visual.
+11. **Fallback em `xfce`**: o XFCE padrao e o menor conjunto estavel e serve de rede de seguranca para Cinnamon e MATE.
 12. **Sessao por display**: `~/.dextermux/session.<display>` permite testar Cinnamon ou MATE no `:2` (VNC 5902, noVNC 6081) sem derrubar o `:1` nem o tunel.
 13. **Fallback de 15 s**: sessao experimental roda em background por 15 s antes de assumir o display; se morrer, `exec startxfce4` assume e o erro vai para `$TMPDIR/session.log`.
 14. **Tamanhos medidos, nao estimados**: os numeros dos menus vieram da resolucao real de dependencias nos indices `termux-main` e `termux-x11` (Installed-Size), incluindo a base remota.

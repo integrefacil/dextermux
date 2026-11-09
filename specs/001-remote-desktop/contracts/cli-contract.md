@@ -11,7 +11,7 @@ bash setup.sh
 # automatico
 curl -fsSL <url> | bash
 curl -fsSL <url> | VAR=valor bash
-curl -fsSL <url> | bash -s -- --desktop=ubuntu --dev=core,web
+curl -fsSL <url> | bash -s -- --desktop=cinnamon --dev=core,web
 ```
 
 Em `curl | bash` o stdin e o proprio script. O instalador abre `/dev/tty` e le as respostas desse
@@ -22,7 +22,7 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 | Flag | Default | Descricao |
 |------|---------|-----------|
 | `-y`, `--yes` | desligado | nao pergunta nada, usa os padroes |
-| `--desktop=NAME` | `ubuntu` | `ubuntu`, `cinnamon`, `mate`, `all` ou `none` |
+| `--desktop=NAME` | `cinnamon` | `cinnamon`, `xfce`, `mate`, `all` ou `none` (`ubuntu` e aceito como alias de `xfce`) |
 | `--dev=LIST` | `core web` | grupos separados por virgula: `core`, `web`, `rust`, `go`, `java`, `db`, `browser`, `none` |
 | `--geometry=WxH` | `1600x900` | resolucao inicial do Xvnc |
 | `--password=PASS` | aleatoria | senha do VncAuth (max. 8 caracteres) |
@@ -67,7 +67,7 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 
 | Caminho | Conteudo |
 |---------|----------|
-| `~/.vnc/xstartup` | le `~/.dextermux/session.<disp>`, sobe dbus, tema, picom/plank no `ubuntu` e a sessao com fallback |
+| `~/.vnc/xstartup` | le `~/.dextermux/session.<disp>`, sobe dbus e a sessao com fallback para `xfce` |
 | `~/.vnc/passwd` | senha VncAuth (600) |
 | `~/start-desktop.sh` | orquestrador de servicos por display |
 | `~/show-access.sh` | banner de URLs e sessao |
@@ -75,14 +75,7 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 | `~/.dextermux/session.<display>` | override por display (teste no `:2`) |
 | `~/.dextermux/running.<display>` | sessao realmente iniciada no display (usado para detectar troca) |
 | `~/.dextermux/session-manager.sh` | implementacao de `dextermux-session` |
-| `~/.dextermux/theme.sh` | implementacao de `dextermux-theme` |
 | `~/.dextermux/wallpaper.svg` | papel de parede em gradiente |
-| `~/.config/rofi/config.rasi` | launcher de busca |
-| `~/.config/picom.conf` | sombras e cantos arredondados |
-| `~/.config/plank/dock1/settings` | dock |
-| `~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml` | barra unica |
-| `~/.local/share/applications/dextermux-apps.desktop` | atalho do rofi para o painel |
-| `~/.local/share/fonts/Ubuntu-*.ttf` | fonte Ubuntu (fallback DejaVu) |
 | `~/.termux/boot/start-services.sh` | boot |
 | `~/noVNC/` | noVNC 1.5.0 |
 | `~/tunnel-url.txt` | ultima URL publica |
@@ -92,7 +85,6 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 | `$PREFIX/bin/desktop` | symlink para `start-desktop.sh` |
 | `$PREFIX/bin/url` | symlink para `show-access.sh` |
 | `$PREFIX/bin/dextermux-session` | symlink para `session-manager.sh` |
-| `$PREFIX/bin/dextermux-theme` | symlink para `theme.sh` |
 
 ## Comandos instalados
 
@@ -106,7 +98,6 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 | `dextermux-session try NOME [DISPLAY]` | sobe a sessao no display indicado (padrao `:2`), reiniciando-o se estiver ativo com outra sessao |
 | `dextermux-session stop [DISPLAY]` | encerra o display indicado (padrao `:2`) |
 | `dextermux-session remove NOME` | remove pacotes exclusivos de `cinnamon` ou `mate` |
-| `dextermux-theme` | reaplica tema, painel, rofi, picom, plank, fontes e papel de parede |
 
 ## Portas
 
@@ -137,5 +128,4 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 - `~/noVNC` so e baixado se `vnc.html` estiver ausente.
 - O bloco do `.bashrc` e removido/reinserido entre os marcadores.
 - `~/start-desktop.sh` detecta processos ativos e nao duplica.
-- Configs de tema sao sobrescritas de forma deterministica por `dextermux-theme`.
 - `pkg clean` roda ao final para liberar o cache de download.
