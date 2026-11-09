@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dextermux - desktop remoto no Termux</title>
+<meta name="description" content="Desktop XFCE no Termux com VNC, noVNC no navegador e tunel Cloudflare, instalado com um comando.">
+<style>
+  :root {
+    --bg: #0b1020;
+    --bg-soft: #121a33;
+    --card: #151f3d;
+    --line: #24325c;
+    --text: #e8ecff;
+    --muted: #9aa7cc;
+    --accent: #6ea8fe;
+    --accent-2: #7ef0c2;
+    --code: #0a0f1f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(110,168,254,.16), transparent 60%),
+      radial-gradient(900px 500px at 90% 0%, rgba(126,240,194,.10), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { width: min(1040px, 92vw); margin: 0 auto; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 0; border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .3px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 14px var(--accent-2); }
+  nav { display: flex; gap: 18px; font-size: 14px; }
+  nav a { color: var(--muted); }
+
+  .hero { padding: 72px 0 40px; }
+  .tag {
+    display: inline-block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent-2); border: 1px solid rgba(126,240,194,.35);
+    padding: 4px 10px; border-radius: 999px; margin-bottom: 18px;
+  }
+  h1 { font-size: clamp(34px, 6vw, 60px); line-height: 1.05; margin: 0 0 16px; letter-spacing: -1px; }
+  h1 span { color: var(--accent); }
+  .sub { font-size: clamp(16px, 2.2vw, 20px); color: var(--muted); max-width: 720px; margin: 0 0 28px; }
+
+  .install {
+    background: var(--code); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 16px 16px 18px; display: flex; align-items: center; gap: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px;
+    overflow: auto;
+  }
+  .install code { color: var(--accent-2); white-space: nowrap; }
+  .install .prompt { color: var(--muted); user-select: none; }
+  .copy {
+    margin-left: auto; flex: 0 0 auto; border: 1px solid var(--line); background: var(--bg-soft);
+    color: var(--text); border-radius: 9px; padding: 8px 12px; font-size: 13px; cursor: pointer;
+  }
+  .copy:hover { border-color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; padding: 24px 0 8px; }
+  .card { background: linear-gradient(180deg, rgba(255,255,255,.03), transparent), var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .card h3 { margin: 0 0 8px; font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; }
+  .icon { font-size: 22px; margin-bottom: 10px; }
+
+  section { padding: 40px 0; }
+  h2 { font-size: 26px; margin: 0 0 18px; letter-spacing: -.4px; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .step { border-left: 2px solid var(--accent); padding: 4px 0 4px 16px; }
+  .step b { display: block; margin-bottom: 4px; }
+  .step span { color: var(--muted); font-size: 14px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; }
+  code.inline { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--code); padding: 2px 6px; border-radius: 6px; color: var(--accent-2); }
+
+  .note { background: rgba(110,168,254,.08); border: 1px solid rgba(110,168,254,.25); border-radius: 14px; padding: 16px 18px; color: var(--muted); font-size: 14px; }
+  .note b { color: var(--text); }
+
+  footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="dot"></span> dextermux</div>
+    <nav>
+      <a href="#instalacao">Instalacao</a>
+      <a href="#acesso">Acesso</a>
+      <a href="https://github.com/integrefacil/dextermux">GitHub</a>
+      <a href="https://github.com/integrefacil/dextermux/tree/main/specs">Specs</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="tag">Termux + XFCE + VNC + Cloudflare</div>
+      <h1>Seu <span>desktop Linux</span> no celular, acessivel de qualquer lugar.</h1>
+      <p class="sub">
+        Instala e configura XFCE, TigerVNC, noVNC no navegador, tunel HTTPS do Cloudflare,
+        sshd com chave e banner de URLs. Tudo com um comando, sem root e sem proot.
+      </p>
+      <div class="install">
+        <span class="prompt">$</span>
+        <code id="cmd">curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh | bash</code>
+        <button class="copy" id="copy">Copiar</button>
+      </div>
+      <div class="grid">
+        <div class="card"><div class="icon">&#128421;</div><h3>XFCE4 de verdade</h3><p>Sessao completa com painel, gerenciador de arquivos e terminal.</p></div>
+        <div class="card"><div class="icon">&#128274;</div><h3>VNC local</h3><p>TigerVNC com VncAuth na porta 5901, compativel com Remmina e apps VNC.</p></div>
+        <div class="card"><div class="icon">&#127760;</div><h3>No navegador</h3><p>noVNC na porta 6080. Abra, conecte e use sem instalar cliente.</p></div>
+        <div class="card"><div class="icon">&#9729;</div><h3>Acesso externo</h3><p>Cloudflare quick tunnel gera uma URL HTTPS publica automaticamente.</p></div>
+        <div class="card"><div class="icon">&#128273;</div><h3>SSH com chave</h3><p>sshd na 8022 e chave publica injetada no authorized_keys.</p></div>
+        <div class="card"><div class="icon">&#9881;</div><h3>Zero memoria</h3><p>Banner com as URLs ao abrir o Termux. Comandos <code class="inline">desktop</code> e <code class="inline">url</code>.</p></div>
+      </div>
+    </section>
+
+    <section id="instalacao">
+      <h2>Como instalar</h2>
+      <div class="steps">
+        <div class="step"><b>1. Termux atualizado</b><span>Instale o Termux pela F-Droid ou GitHub e rode o comando da pagina.</span></div>
+        <div class="step"><b>2. Termux:Boot</b><span>Instale o app Termux:Boot e abra uma vez para o autostart funcionar.</span></div>
+        <div class="step"><b>3. Bateria</b><span>No Samsung, marque o Termux como "Sem restricoes" e em "Apps que nunca dormem".</span></div>
+      </div>
+      <p class="sub" style="margin-top:22px">Com senha e chave definidas:</p>
+      <div class="install">
+        <span class="prompt">$</span>
+        <code>curl -fsSL https://raw.githubusercontent.com/integrefacil/dextermux/main/setup.sh | VNC_PASS=MinhaSen SSH_PUBKEY="ssh-ed25519 AAAA..." bash</code>
+      </div>
+    </section>
+
+    <section id="acesso">
+      <h2>Acesso</h2>
+      <table>
+        <tr><th>Onde</th><th>Endereco</th><th>Senha</th></tr>
+        <tr><td>VNC (LAN)</td><td><code class="inline">vnc://&lt;ip&gt;:5901</code></td><td>a definida no setup</td></tr>
+        <tr><td>Navegador (LAN)</td><td><code class="inline">http://&lt;ip&gt;:6080/vnc.html</code></td><td>a definida no setup</td></tr>
+        <tr><td>Navegador (externo)</td><td><code class="inline">&lt;url-do-tunel&gt;/vnc.html</code></td><td>a definida no setup</td></tr>
+        <tr><td>SSH</td><td><code class="inline">ssh -p 8022 &lt;usuario&gt;@&lt;ip&gt;</code></td><td>chave publica</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h2>Comandos do dia a dia</h2>
+      <table>
+        <tr><th>Comando</th><th>Efeito</th></tr>
+        <tr><td><code class="inline">desktop</code></td><td>Sobe sshd, Xvnc, websockify e cloudflared.</td></tr>
+        <tr><td><code class="inline">url</code></td><td>Imprime as URLs e o estado dos servicos.</td></tr>
+        <tr><td><code class="inline">tail -f $TMPDIR/cf.log</code></td><td>Acompanha o tunel do Cloudflare.</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <div class="note">
+        <b>Nao usa xrdp.</b> O pacote <code class="inline">xrdp 0.10.6.1</code> do Termux tem bug de autenticacao
+        (<code class="inline">Bugcheck; inconsistent auth result</code>). O caminho suportado e VNC + noVNC.
+        Detalhes em <a href="https://github.com/integrefacil/dextermux/blob/main/specs/001-remote-desktop/research.md">research.md</a>.
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>dextermux - ambiente remoto para Termux</span>
+    <span><a href="https://github.com/integrefacil/dextermux">github.com/integrefacil/dextermux</a></span>
+  </footer>
+</div>
+<script>
+  const btn = document.getElementById('copy');
+  btn.addEventListener('click', async () => {
+    const text = document.getElementById('cmd').textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = 'Copiado';
+      setTimeout(() => btn.textContent = 'Copiar', 1600);
+    } catch (e) {
+      btn.textContent = 'Falhou';
+      setTimeout(() => btn.textContent = 'Copiar', 1600);
+    }
+  });
+</script>
+</body>
+</html>
