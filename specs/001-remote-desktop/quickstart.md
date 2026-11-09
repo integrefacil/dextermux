@@ -64,13 +64,16 @@ Publico:      https://xxxx.trycloudflare.com/vnc.html
 
 ```bash
 dextermux-session list          # instaladas e qual e a padrao
+dextermux-session status        # inclui os displays ativos
 dextermux-session try mate      # abre o MATE em paralelo no display :2
-dextermux-session stop mate     # encerra o :2
+dextermux-session try mate 3    # abre em outro display (:3, noVNC 6082)
+dextermux-session stop          # encerra o :2
+dextermux-session stop 3        # encerra o :3
 dextermux-session set mate      # troca a padrao e reinicia o :1
 dextermux-session remove mate   # remove os pacotes exclusivos do MATE
 ```
 
-Enquanto o `:2` estiver ativo, abra `http://<ip>:6081/vnc.html` em outra aba e compare com a `6080`.
+Enquanto o `:2` estiver ativo, abra `http://<ip>:6081/vnc.html` em outra aba e compare com a `6080`. Para uma terceira sessao use `dextermux-session try ubuntu 3` (noVNC 6082). Se o display ja estiver ativo com outra sessao, o script reinicia esse display com a sessao pedida.
 Se uma sessao experimental morrer em menos de 15 segundos, o `xstartup` cai para `ubuntu` e registra
 o motivo em `$TMPDIR/session.log`.
 
