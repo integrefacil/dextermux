@@ -73,6 +73,7 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 | `~/show-access.sh` | banner de URLs e sessao |
 | `~/.dextermux/session` | sessao padrao |
 | `~/.dextermux/session.<display>` | override por display (teste no `:2`) |
+| `~/.dextermux/running.<display>` | sessao realmente iniciada no display (usado para detectar troca) |
 | `~/.dextermux/session-manager.sh` | implementacao de `dextermux-session` |
 | `~/.dextermux/theme.sh` | implementacao de `dextermux-theme` |
 | `~/.dextermux/wallpaper.svg` | papel de parede em gradiente |
@@ -99,11 +100,11 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e cloudflared no display `:1` |
 | `url` | imprime IP, portas, sessao e estado dos servicos |
-| `dextermux-session` | mostra a sessao padrao e as instaladas |
+| `dextermux-session` | mostra a sessao padrao, as instaladas e os displays ativos |
 | `dextermux-session list` | lista sessoes com estado |
 | `dextermux-session set NOME` | define a sessao padrao e reinicia o `:1` |
-| `dextermux-session try NOME` | sobe a sessao no `:2` (VNC 5902, noVNC 6081) |
-| `dextermux-session stop NOME` | encerra o `:2` |
+| `dextermux-session try NOME [DISPLAY]` | sobe a sessao no display indicado (padrao `:2`), reiniciando-o se estiver ativo com outra sessao |
+| `dextermux-session stop [DISPLAY]` | encerra o display indicado (padrao `:2`) |
 | `dextermux-session remove NOME` | remove pacotes exclusivos de `cinnamon` ou `mate` |
 | `dextermux-theme` | reaplica tema, painel, rofi, picom, plank, fontes e papel de parede |
 

@@ -55,8 +55,10 @@ Cinnamon e MATE nao foram validados no aparelho. O `~/.vnc/xstartup` detecta ses
 | `url` | imprime as URLs e o estado dos servicos |
 | `dextermux-session` | mostra a sessao atual e as instaladas |
 | `dextermux-session set cinnamon` | troca a sessao padrao e reinicia o VNC |
-| `dextermux-session try mate` | sobe outra sessao em paralelo no display `:2` (noVNC 6081) |
-| `dextermux-session stop mate` | encerra o display `:2` |
+| `dextermux-session try mate` | sobe a sessao no display `:2` (noVNC 6081), reiniciando-o se preciso |
+| `dextermux-session try mate 3` | sobe a sessao em outro display (`:3`, noVNC 6082) |
+| `dextermux-session stop` | encerra o display `:2` |
+| `dextermux-session stop 3` | encerra o display `:3` |
 | `dextermux-session remove cinnamon` | remove os pacotes exclusivos da sessao |
 | `dextermux-theme` | reaplica o visual Ubuntu-like sem reinstalar pacotes |
 

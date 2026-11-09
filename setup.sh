@@ -683,6 +683,8 @@ export XDG_RUNTIME_DIR="$TMPDIR"
 
 DISP="${DISPLAY#:}"
 SESSION=$(cat "$HOME/.dextermux/session.$DISP" 2>/dev/null || cat "$HOME/.dextermux/session" 2>/dev/null || echo ubuntu)
+mkdir -p "$HOME/.dextermux"
+echo "$SESSION" >"$HOME/.dextermux/running.$DISP"
 
 if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && command -v dbus-launch >/dev/null 2>&1; then
     eval "$(dbus-launch --sh-syntax --exit-with-session)" 2>/dev/null || true
@@ -719,6 +721,7 @@ if kill -0 "$PID" 2>/dev/null; then
     wait "$PID"
 else
     echo "$(date) sessao $SESSION falhou; usando ubuntu" >>"$TMPDIR/session.log"
+    echo ubuntu >"$HOME/.dextermux/running.$DISP"
     exec startxfce4
 fi
 EOF
@@ -737,6 +740,13 @@ DIR="$HOME/.dextermux"
 mkdir -p "$DIR"
 
 if [ -n "$SESSION" ]; then
+    ACTIVE=$(cat "$DIR/running.$DISP" 2>/dev/null || echo "")
+    if [ "$ACTIVE" != "$SESSION" ] && pgrep -f "[X]vnc :$DISP" >/dev/null; then
+        echo "trocando :$DISP de ${ACTIVE:-desconhecida} para $SESSION"
+        vncserver -kill :"$DISP" >/dev/null 2>&1 || true
+        sleep 1
+        rm -f "$TMPDIR/.X$DISP-lock" "$TMPDIR/.X11-unix/X$DISP" "$HOME/.vnc/"*:"$DISP".pid 2>/dev/null || true
+    fi
     echo "$SESSION" >"$DIR/session.$DISP"
 fi
 
@@ -832,11 +842,11 @@ usage() {
     cat <<TXT
 uso: dextermux-session [comando]
 
-  (vazio)            mostra a sessao atual e as instaladas
+  (vazio)            mostra a sessao atual, as instaladas e os displays ativos
   list               lista sessoes com estado
   set NOME           define a sessao padrao e reinicia o VNC
-  try NOME           sobe a sessao em paralelo no display :2 (noVNC 6081)
-  stop NOME          encerra a sessao de teste no display :2
+  try NOME [DISPLAY] sobe a sessao no display indicado (padrao 2)
+  stop [DISPLAY]     encerra o display de teste (padrao 2)
   remove NOME        remove os pacotes exclusivos da sessao
 TXT
 }
@@ -867,6 +877,21 @@ list_sessions() {
     done
 }
 
+running_displays() {
+    local d found=0
+    for d in 1 2 3 4 5 6; do
+        if pgrep -f "[X]vnc :$d" >/dev/null; then
+            found=1
+            printf '  :%-2s VNC %-5s noVNC %-5s sessao %s\n' \
+                "$d" "$((5900 + d))" "$((6080 + d - 1))" \
+                "$(cat "$DIR/running.$d" 2>/dev/null || echo "?")"
+        fi
+    done
+    if [ "$found" = "0" ]; then
+        printf '  nenhum display ativo\n'
+    fi
+}
+
 restart_vnc() {
     vncserver -kill :1 >/dev/null 2>&1 || true
     sleep 1
@@ -880,6 +905,9 @@ case "$cmd" in
         echo ""
         echo "Sessao padrao: $(current)"
         list_sessions
+        echo ""
+        echo "Displays ativos:"
+        running_displays
         echo ""
         ;;
     list)
@@ -895,19 +923,26 @@ case "$cmd" in
         ;;
     try)
         name="${2:-}"
+        disp="${3:-2}"
         installed "$name" || { echo "sessao nao instalada: $name" >&2; exit 1; }
-        echo "$name" >"$DIR/session.2"
-        "$HOME/start-desktop.sh" 2 "$name"
+        case "$disp" in
+            ""|*[!0-9]*) echo "display invalido: $disp" >&2; exit 1 ;;
+        esac
+        "$HOME/start-desktop.sh" "$disp" "$name"
         echo ""
-        echo "Sessao $name no display :2"
-        echo "noVNC: http://<ip>:6081/vnc.html"
-        echo "VNC:   <ip>:5902"
+        echo "Sessao $name no display :$disp"
+        echo "noVNC: http://<ip>:$((6080 + disp - 1))/vnc.html"
+        echo "VNC:   <ip>:$((5900 + disp))"
         ;;
     stop)
-        vncserver -kill :2 >/dev/null 2>&1 || true
-        pkill -f "[w]ebsockify.*6081" 2>/dev/null || true
-        rm -f "$DIR/session.2"
-        echo "display :2 encerrado"
+        disp="${2:-2}"
+        case "$disp" in
+            ""|*[!0-9]*) disp=2 ;;
+        esac
+        vncserver -kill ":$disp" >/dev/null 2>&1 || true
+        pkill -f "[w]ebsockify.*$((6080 + disp - 1))" 2>/dev/null || true
+        rm -f "$DIR/session.$disp" "$DIR/running.$disp"
+        echo "display :$disp encerrado"
         ;;
     remove)
         name="${2:-}"
