@@ -5,8 +5,7 @@
 No Termux do celular:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<user>/<repo>/main/setup.sh -o setup.sh
-bash setup.sh
+curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash
 ```
 
 O instalador mostra os recursos do aparelho, abre os menus e so instala depois da confirmacao.
