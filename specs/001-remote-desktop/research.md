@@ -77,6 +77,29 @@ Registro das investigacoes que levaram ao `setup.sh`. Cada item tem sintoma, cau
 
 - **Fato**: stdin e consumido pelo script; qualquer `read` quebra. `set -o pipefail` + `head -c` gera SIGPIPE e aborta.
 - **Decisao**: `set -eu` (sem pipefail) e geracao de senha com `|| true`.
+- **Atualizacao (v2.0.0)**: interatividade passou a ler de `/dev/tty` (`exec 3</dev/tty`, `read <&3`). Isso preserva o stdin do script, evita o risco de truncar o codigo ao bufferizar o restante e mantem `curl | bash` funcionando com menus. Sem `/dev/tty`, `INTERACTIVE=0` e os padroes entram em acao.
+
+## 14. Disponibilidade de sessoes graficas no Termux (v2.0.0)
+
+- **Fato**: `gnome-shell`, `mutter`, `nautilus` e `gnome-control-center` nao existem nos indices `termux-main`/`termux-x11`. Existem `cinnamon` (com `muffin`, `cjs`, `nemo`), `mate`, `lxqt`, `xfce4`, `openbox`, `i3`, `sway`, `labwc`.
+- **Fato**: `plank` nao existe; o fork disponivel e `plank-reloaded`.
+- **Fato**: `picom` esta no x11-repo com backend `xrender`, suficiente para sombra e cantos arredondados sem GL.
+- **Fato**: `muffin` depende de `opengl`, que puxa `mesa` + `libllvm` (169 MB). O TigerVNC ja depende de `opengl`, entao o custo extra de GL para Cinnamon e menor que a soma isolada.
+- **Decisao**: preset `ubuntu` restiliza o XFCE (unico caminho validado) e Cinnamon/MATE entram como experimentais com fallback de 15 s.
+
+## 15. Tamanhos medidos (v2.0.0)
+
+Resolucao recursiva de `Depends` sobre os indices `termux-main` e `termux-x11` (campo `Installed-Size`), incluindo a base remota (`tigervnc`, `python`, `cloudflared`, `openssh`, `git`, `curl`, `tar`):
+
+| Preset | Pacotes | Instalado |
+|--------|---------|-----------|
+| ubuntu | 245 | ~817 MB |
+| cinnamon | 311 | ~1691 MB |
+| mate | 269 | ~1345 MB |
+| all | 412 | ~2256 MB |
+| none | - | ~260 MB |
+
+Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db ~296 MB, browser ~1278 MB.
 
 ## Versoes validadas (2026-11-09)
 
