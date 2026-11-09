@@ -116,10 +116,13 @@ rm -f ~/.dextermux/theme.sh ~/.dextermux/wallpaper.svg "$PREFIX/bin/dextermux-th
 rm -rf ~/.config/rofi ~/.config/plank
 rm -f ~/.config/picom.conf ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml
 rm -f ~/.local/share/fonts/Ubuntu-*.ttf
-pkg uninstall -y rofi plank-reloaded picom arc-gtk-theme gnome-terminal gnome-text-editor gnome-calculator gnome-screenshot gsettings-desktop-schemas
+pkg uninstall -y rofi plank-reloaded picom arc-gtk-theme xfce4-whiskermenu-plugin
 pkg autoremove -y
 pkg clean
 ```
+
+`gnome-terminal` fica instalado de proposito: e o terminal padrao do Cinnamon. `gsettings-desktop-schemas`
+tambem fica, porque e dependencia do Cinnamon. O `autoremove` remove apenas o que ninguem mais usa.
 
 A sessao `ubuntu` antiga passa a ser lida como `xfce`, entao nao e preciso mexer em `~/.dextermux/session`.
 
