@@ -128,4 +128,5 @@
 - [x] T066 `dextermux-status` com contagem de processos, top 5 e comandos ADB
 - [x] T067 Avisos em 24 processos e critico em 30, sem bloquear instalacao
 - [x] T068 Atualizar README, quickstart, contrato, spec, plano, research e constitution 2.0.0
+- [x] T070 `dextermux-ssh` com status, add e list; banner e resumo com o comando SSH
 - [ ] T069 Validar no aparelho: `curl -k https://<ip>:6080/vnc.html` e `dextermux-status` abaixo de 24

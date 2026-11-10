@@ -67,6 +67,7 @@ depende de terminal.
 | `~/show-access.sh` | banner de URLs e estado |
 | `~/.dextermux/tls.sh` | implementacao de `dextermux-tls` |
 | `~/.dextermux/status.sh` | implementacao de `dextermux-status` |
+| `~/.dextermux/ssh.sh` | implementacao de `dextermux-ssh` |
 | `~/.dextermux/tunnel` | `1` liga o cloudflared, `0` desliga |
 | `~/.dextermux/tls/server.crt` | certificado autoassinado (SANs: IP da LAN, 127.0.0.1, localhost) |
 | `~/.dextermux/tls/server.key` | chave privada (600) |
@@ -82,6 +83,7 @@ depende de terminal.
 | `$PREFIX/bin/url` | symlink para `show-access.sh` |
 | `$PREFIX/bin/dextermux-tls` | symlink para `tls.sh` |
 | `$PREFIX/bin/dextermux-status` | symlink para `status.sh` |
+| `$PREFIX/bin/dextermux-ssh` | symlink para `ssh.sh` |
 
 ## Comandos instalados
 
@@ -89,6 +91,9 @@ depende de terminal.
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
 | `url` | imprime IP, portas, TLS e estado |
+| `dextermux-ssh` | usuario, IP, porta, comando e chaves autorizadas |
+| `dextermux-ssh add "<chave>"` | autoriza a chave em `authorized_keys` (700/600) |
+| `dextermux-ssh list` | fingerprints das chaves autorizadas |
 | `dextermux-status` | contagem de processos, top 5, TLS e tunel |
 | `dextermux-tls ensure` | gera o certificado se ausente, IP mudou ou expira em 30 dias |
 | `dextermux-tls renew` | regenera o certificado |

@@ -52,6 +52,8 @@ Publico:      desligado (rode: desktop com --tunnel)
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
 | `url` | imprime o banner com IP, portas e estado |
+| `dextermux-ssh` | usuario, IP, porta e chaves autorizadas |
+| `dextermux-ssh add "<chave>"` | autoriza uma chave publica |
 | `dextermux-status` | processos, top 5, TLS e tunel |
 | `dextermux-tls show` | certificado, SANs e validade |
 | `dextermux-tls renew` | regenera o certificado |

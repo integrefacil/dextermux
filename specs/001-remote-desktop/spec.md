@@ -97,6 +97,7 @@ O usuario quer trafego criptografado na rede local e um ambiente que nao seja mo
 - **FR-016**: O sistema DEVE medir e reportar a contagem de processos, avisando em 24 e marcando critico em 30, sem bloquear.
 - **FR-017**: O sistema DEVE registrar log completo da execucao em `~/dextermux-install.log`.
 - **FR-018**: O `.bashrc` DEVE apenas imprimir o banner, sem iniciar servicos.
+- **FR-019**: O sistema DEVE exibir usuario, IP, porta 8022 e comando SSH no banner e no resumo, e permitir autorizar chaves depois da instalacao via `dextermux-ssh add`.
 
 ### Key Entities
 
