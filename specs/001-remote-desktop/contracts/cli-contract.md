@@ -120,11 +120,15 @@ depende de terminal.
 | `sshd` | syslog do Termux |
 | instalacao | `~/dextermux-install.log` |
 
-Orcamento esperado: ~11 processos ocioso (bash, sshd, Xvnc, websockify, xfce4-session, xfwm4,
-xfce4-panel, xfdesktop, xfsettingsd, xfconfd, dbus-daemon).
+Orcamento esperado: ~15 processos ocioso (bash, sshd, Xvnc, websockify, xfce4-session, xfwm4,
+xfce4-panel, xfdesktop, xfsettingsd, xfconfd, dbus-daemon, dbus-launch e gvfs quando o Thunar abre).
+
+Faixas do `dextermux-status`: ate 22 `ok`, 23-26 `atencao`, 27+ `critico`. A contagem ignora
+utilitarios transitorios (`ps`, `head`, `wc`, `tr`, `grep`, `sed`, `awk`, `sort`, `sleep`).
 
 ## Idempotencia
 
+- `pkg upgrade -y` roda antes da instalacao para alinhar sonames (ex: `libicuuc` exigido pelo `libvte`).
 - `pkg install -y` so recebe pacotes ausentes (`dpkg-query`).
 - `~/.vnc/passwd` nao e sobrescrito sem `VNC_PASS`.
 - `~/noVNC` so e baixado se `vnc.html` estiver ausente.

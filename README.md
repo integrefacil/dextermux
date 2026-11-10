@@ -88,14 +88,14 @@ O Android 12 introduziu o **phantom process killer**: processos criados por apps
 componentes sao mortos com `SIGKILL` (signal 9) acima de 32 no total. Nao e um limite do Termux e
 nao aparece como mensagem no terminal.
 
-O stack deste projeto fica em ~11 processos ocioso e ~17 com terminal, SSH e Thunar abertos.
+O stack deste projeto fica em ~15 processos ocioso (dbus e gvfs incluidos) e ~20 com terminal e SSH abertos.
 Para medir:
 
 ```bash
 dextermux-status
 ```
 
-Faixas: ate 23 `ok`, 24-29 `atencao`, 30+ `critico`.
+Faixas: ate 22 `ok`, 23-26 `atencao`, 27+ `critico`. A contagem ignora utilitarios transitorios (`ps`, `grep`, `wc`).
 
 Para elevar o limite (opcional, via PC com ADB, sem root):
 
@@ -103,6 +103,12 @@ Para elevar o limite (opcional, via PC com ADB, sem root):
 adb shell settings put global settings_enable_monitor_phantom_procs false
 adb shell device_config put activity_manager max_phantom_processes 2147483647
 adb shell dumpsys activity settings | grep max_phantom_processes
+```
+
+Se o SSH cair depois de um `pkg upgrade` (o openssh e substituido), rode no Termux:
+
+```bash
+pkill -x sshd; sshd
 ```
 
 ## Pendencias manuais
