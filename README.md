@@ -44,6 +44,7 @@ conecta por `wss`. O IP da LAN entra nas SANs e o certificado e regenerado quand
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
 | `url` | mostra IP, portas, TLS e estado |
+| `dextermux-desktop` | mostra ou troca o modo do desktop (`native`/`xubuntu`) |
 | `dextermux-dev` | abre o opencode no Ubuntu, ou um shell se ele nao existir |
 | `dextermux-ubuntu` | shell no Ubuntu com o XFCE acessivel |
 | `dextermux-gui APP` | roda um app grafico do Ubuntu no XFCE nativo |
@@ -66,6 +67,11 @@ conecta por `wss`. O IP da LAN entra nas SANs e o certificado e regenerado quand
 | `--tls` / `--no-tls` | HTTPS autoassinado na LAN (default ligado) |
 | `--icons` / `--no-icons` | icones na area de trabalho (default desligado, economiza gvfs/tumbler) |
 | `--ubuntu` / `--no-ubuntu` | Ubuntu proot para ferramentas glibc (default ligado) |
+| `--xubuntu` | instala Xubuntu completo em rootfs dedicado e usa como desktop |
+| `--desktop=MODE` | `native` (XFCE leve) ou `xubuntu` |
+| `--reset-proot` | apaga os rootfs do proot (exige `--confirm=APAGAR`) |
+| `--reset-all` | apaga rootfs e o `$HOME` do Termux (exige `--confirm=APAGAR`) |
+| `--confirm=APAGAR` | libera os dois resets |
 | `--repair` | nao instala pacotes; regrava configs e reinicia |
 | `--dry-run` | mostra o plano e sai |
 | `--version` | versao do instalador |
@@ -109,6 +115,37 @@ para `/root/.Xauthority`. Nao existe um segundo desktop.
 - Para pular o Ubuntu: `--no-ubuntu`.
 - O binario antigo em `~/.opencode/bin` (glibc, nao executa no Termux) pode ser removido:
   `rm -rf ~/.opencode`.
+
+## Xubuntu no proot (experimental)
+
+`--xubuntu` cria um rootfs dedicado `xubuntu`, instala `xubuntu-desktop` completo, `tigervnc` e
+`dbus-x11`, e passa a usar esse desktop. O XFCE nativo fica como fallback.
+
+```bash
+bash setup.sh --xubuntu              # instala e ativa
+dextermux-desktop native             # volta ao XFCE leve
+dextermux-desktop xubuntu            # retorna ao Xubuntu
+```
+
+- Disco: ~3 GB (rootfs + desktop completo).
+- Tempo: 20-40 minutos no aparelho.
+- **Risco**: Xubuntu completo sobe ~25-30 processos ocioso. Sem ADB, qualquer navegador pode
+  disparar o signal 9 do Android. Use com essa expectativa.
+- Se o Xubuntu nao subir em 20 segundos, o script cai automaticamente para o XFCE nativo.
+
+## Reset (destrutivo)
+
+```bash
+# apagar apenas os rootfs do proot
+bash setup.sh --reset-proot --confirm=APAGAR
+
+# apagar rootfs + todo o $HOME do Termux e reinstalar do zero
+curl -fsSL https://integrefacil.github.io/dextermux/setup.sh -o setup.sh
+bash setup.sh --reset-all --confirm=APAGAR
+```
+
+`--reset-all` apaga projetos, chaves SSH, `.vnc`, TLS e configuracoes do Termux. Nunca roda sem
+`--confirm=APAGAR`, e so funciona com o script em arquivo (nao por pipe).
 
 ## Limite de 32 processos (Android 12+)
 

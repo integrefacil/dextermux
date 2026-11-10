@@ -162,6 +162,14 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
 - **Cuidado**: o instalador do opencode adiciona `~/.opencode/bin` no PATH; como o binario e glibc, o `write_bashrc_block` remove essa linha e o wrapper passa a valer.
 - **Limite**: proot nao tem systemd/GPU; apps com sandbox ou aceleracao falham.
 
+## 22. Xubuntu no proot (v5.0.0)
+
+- **Fato**: `xubuntu-desktop` completo instala ~2,5 GB e sobe ~25-30 processos ocioso.
+- **Fato**: o `Xvnc` do Ubuntu dentro do proot compartilha a rede do Termux; o websockify continua na 6080.
+- **Decisao**: rootfs dedicado `xubuntu` (via `proot-distro install -n xubuntu ubuntu`), modo em `~/.dextermux/desktop` e fallback para o XFCE nativo em 20 s.
+- **Risco**: sem ADB, o teto de 32 processos e atingido com facilidade; o modo e experimental.
+- **Reset**: `--confirm=APAGAR` obrigatorio; `--reset-all` se re-executa de `$TMPDIR` antes de apagar o `$HOME`.
+
 ## Versoes validadas (2026-11-09)
 
 | Componente | Versao |

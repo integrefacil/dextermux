@@ -23,6 +23,11 @@ depende de terminal.
 | `--tls` / `--no-tls` | `--tls` | HTTPS autoassinado na LAN para o noVNC |
 | `--icons` / `--no-icons` | `--no-icons` | icones na area de trabalho (desligado evita gvfs/tumbler) |
 | `--ubuntu` / `--no-ubuntu` | `--ubuntu` | instala Ubuntu via proot-distro para ferramentas glibc |
+| `--xubuntu` | desligado | instala Xubuntu completo em rootfs dedicado e ativa o modo |
+| `--desktop=MODE` | `native` | `native` (XFCE) ou `xubuntu` |
+| `--reset-proot` | desligado | apaga os rootfs do proot; exige `--confirm=APAGAR` |
+| `--reset-all` | desligado | apaga rootfs e `$HOME`; exige `--confirm=APAGAR` e script em arquivo |
+| `--confirm=APAGAR` | vazio | libera os resets |
 | `--repair` | desligado | nao instala pacotes; regrava configs e reinicia |
 | `--dry-run` | desligado | imprime o plano e sai |
 | `-h`, `--help` | | ajuda |
@@ -71,6 +76,8 @@ depende de terminal.
 | `~/.dextermux/status.sh` | implementacao de `dextermux-status` |
 | `~/.dextermux/ssh.sh` | implementacao de `dextermux-ssh` |
 | `~/.dextermux/dev.sh` | implementacao de `dextermux-dev` |
+| `~/.dextermux/desktop.sh` | implementacao de `dextermux-desktop` |
+| `~/.dextermux/desktop` | modo atual: `native` ou `xubuntu` |
 | `~/.dextermux/ubuntu.sh` | implementacao de `dextermux-ubuntu` |
 | `~/.dextermux/gui.sh` | ponte grafica para apps do Ubuntu |
 | `~/.dextermux/tunnel` | `1` liga o cloudflared, `0` desliga |
@@ -90,6 +97,7 @@ depende de terminal.
 | `$PREFIX/bin/dextermux-status` | symlink para `status.sh` |
 | `$PREFIX/bin/dextermux-ssh` | symlink para `ssh.sh` |
 | `$PREFIX/bin/dextermux-dev` | symlink para `dev.sh` |
+| `$PREFIX/bin/dextermux-desktop` | symlink para `desktop.sh` |
 | `$PREFIX/bin/dextermux-ubuntu` | symlink para `ubuntu.sh` |
 | `$PREFIX/bin/dextermux-gui` | symlink para `gui.sh` |
 | `$PREFIX/bin/opencode` | wrapper que chama `dextermux-dev` |
@@ -100,6 +108,7 @@ depende de terminal.
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
 | `url` | imprime IP, portas, TLS e estado |
+| `dextermux-desktop [native|xubuntu]` | mostra ou alterna o desktop e reinicia |
 | `dextermux-dev` | opencode no Ubuntu, ou shell se ausente |
 | `dextermux-ubuntu` | shell no Ubuntu com `DISPLAY=:1` e XAUTHORITY |
 | `dextermux-gui APP` | executa app grafico do Ubuntu no XFCE nativo |
@@ -112,6 +121,22 @@ depende de terminal.
 | `dextermux-tls enable` / `disable` | liga ou desliga o HTTPS e para websockify/cloudflared |
 | `dextermux-tls show` | certificado, SANs e validade |
 | `dextermux-tls mode` | imprime `https` ou `http` |
+
+## Xubuntu proot
+
+- Rootfs: `$PREFIX/var/lib/proot-distro/containers/xubuntu/rootfs`, criado com
+  `proot-distro install -n xubuntu ubuntu`.
+- Pacotes dentro: `xubuntu-desktop`, `tigervnc-standalone-server`, `dbus-x11`.
+- Sessao: `Xvnc :1` rodando dentro do proot, com `/root/.vnc/xstartup` executando `startxfce4`.
+- Senha: `~/.vnc/passwd` e copiado para `/root/.vnc/passwd`.
+- Fallback: se o `Xvnc` nao subir em 20 s, o modo volta para `native`.
+
+## Reset
+
+- `--reset-proot`: remove `$PREFIX/var/lib/proot-distro/containers` e para.
+- `--reset-all`: copia o script para `$TMPDIR`, remove containers e todo o conteudo de `$HOME`,
+  e se re-executa para instalar do zero.
+- Ambos exigem `--confirm=APAGAR` e so rodam dentro do Termux.
 
 ## Ubuntu proot
 
