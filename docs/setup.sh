@@ -41,7 +41,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="4.0.0"
+DEXTERMUX_VERSION="4.0.1"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -1080,10 +1080,6 @@ run_install() {
     write_status_helper
     write_ssh_helper
 
-    step "Ubuntu (proot)"
-    if [ "$UBUNTU" = "1" ]; then
-        write_ubuntu_helpers
-    fi
     step "Banner do shell"
     write_bashrc_block
 
@@ -1135,6 +1131,10 @@ repair_only() {
     write_tls_helper
     write_status_helper
     write_ssh_helper
+    step "Ubuntu (proot)"
+    if [ "$UBUNTU" = "1" ]; then
+        write_ubuntu_helpers
+    fi
     step "Banner do shell"
     write_bashrc_block
     step "Autostart no boot"
