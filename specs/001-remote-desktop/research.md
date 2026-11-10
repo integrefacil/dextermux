@@ -79,7 +79,7 @@ Registro das investigacoes que levaram ao `setup.sh`. Cada item tem sintoma, cau
 - **Decisao**: `set -eu` (sem pipefail) e geracao de senha com `|| true`.
 - **Atualizacao (v2.0.0)**: interatividade passou a ler de `/dev/tty` (`exec 3</dev/tty`, `read <&3`). Isso preserva o stdin do script, evita o risco de truncar o codigo ao bufferizar o restante e mantem `curl | bash` funcionando com menus. Sem `/dev/tty`, `INTERACTIVE=0` e os padroes entram em acao.
 
-## 14. Disponibilidade de sessoes graficas no Termux (v2.0.0)
+## 14. Disponibilidade de sessoes graficas no Termux (v2.0.0, superado pela v3.0.0)
 
 - **Fato**: `gnome-shell`, `mutter`, `nautilus` e `gnome-control-center` nao existem nos indices `termux-main`/`termux-x11`. Existem `cinnamon` (com `muffin`, `cjs`, `nemo`), `mate`, `lxqt`, `xfce4`, `openbox`, `i3`, `sway`, `labwc`.
 - **Fato**: `plank` nao existe; o fork disponivel e `plank-reloaded`.
@@ -87,7 +87,7 @@ Registro das investigacoes que levaram ao `setup.sh`. Cada item tem sintoma, cau
 - **Fato**: `muffin` depende de `opengl`, que puxa `mesa` + `libllvm` (169 MB). O TigerVNC ja depende de `opengl`, entao o custo extra de GL para Cinnamon e menor que a soma isolada.
 - **Decisao original (descartada)**: restilizar o XFCE com rofi, plank, picom, Arc e apps GNOME. O visual nao agradou o usuario e o preset foi removido na v1.2.0. Ficou o XFCE padrao (`xfce4` + `xfdesktop`) e Cinnamon virou a sessao padrao, com fallback de 15 s para `xfce`.
 
-## 15. Tamanhos medidos (v2.0.0)
+## 15. Tamanhos medidos (v2.0.0, superado pela v3.0.0)
 
 Resolucao recursiva de `Depends` sobre os indices `termux-main` e `termux-x11` (campo `Installed-Size`), incluindo a base remota (`tigervnc`, `python`, `cloudflared`, `openssh`, `git`, `curl`, `tar`):
 
@@ -110,6 +110,28 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
 - **Fato**: `cloudflared tunnel --url https://localhost:6080 --no-tls-verify` aceita origin com certificado autoassinado.
 - **Decisao**: certificado autoassinado por padrao, regenerado quando o IP da `wlan0` muda ou quando faltam 30 dias para expirar. `dextermux-tls` controla o modo sem reinstalar. `VeNCrypt`/X509 no VNC foi descartado porque o noVNC nao negocia X509 e o Remmina ja recusou VeNCrypt.
 - **Limitacao**: o aviso do navegador so desaparece instalando o certificado como autoridade no cliente (equivalente a opcao `mkcert`, nao implementada).
+
+## 17. Phantom process killer do Android (v3.0.0)
+
+- **Fato**: Android 12+ mata com `SIGKILL` (signal 9) processos criados por apps fora do ciclo de componentes acima de 32 no total. Nao e `ulimit` do Termux; o limite e do `ActivityManager` e compartilhado entre apps.
+- **Sintoma**: "Process completed (signal 9)", sem mensagem no terminal, e o app inteiro morre.
+- **Como medir**: `ps -u "$(id -u)" -o pid= | wc -l` no Termux; `dumpsys activity settings | grep max_phantom_processes` via ADB.
+- **Como elevar (opcional, sem root, via PC)**:
+  ```bash
+  adb shell settings put global settings_enable_monitor_phantom_procs false
+  adb shell device_config put activity_manager max_phantom_processes 2147483647
+  ```
+- **Decisao**: mirar 11-13 processos ociosos; `dextermux-status` avisa em 24 e marca critico em 30; nunca falhar instalacao por contagem.
+
+## 18. Stack minimo de XFCE e orcamento de processos (v3.0.0)
+
+- **Fato**: o metapacote `xfce4` puxa `xfce4-notifyd` e `xfce4-power-manager`, que criam daemons extras.
+- **Fato**: `at-spi` pode adicionar ate 2 processos; `NO_AT_BRIDGE=1` e `GTK_A11Y=none` evitam.
+- **Fato**: `gvfsd` so sobe quando o Thunar precisa (dbus presente).
+- **Decisao**: instalar `xfwm4 xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop thunar xfce4-terminal ttf-dejavu` em vez do metapacote. Resultado medido nos indices: 161 pacotes, ~684 MB.
+- **Orcamento ocioso**: bash 1, sshd 1, Xvnc 1, websockify 1, xfce4-session 1, xfwm4 1, xfce4-panel 1, xfdesktop 1, xfsettingsd 1, xfconfd 1, dbus-daemon 1 = 11.
+- **Uso real**: terminal 12; cada sessao SSH +2; Thunar/gvfs 15-17; tunel +1.
+- **Decisao**: `.bashrc` apenas imprime o banner; o desktop sobe por `desktop` ou no boot.
 
 ## Versoes validadas (2026-11-09)
 

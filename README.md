@@ -1,6 +1,6 @@
 # dextermux
 
-Desktop Linux no Termux com acesso remoto por VNC, noVNC no navegador e tunel HTTPS do Cloudflare, instalado com um comando e configurado por um instalador interativo.
+XFCE4 remoto no Termux com VNC, noVNC por HTTPS e SSH, instalado com um comando.
 
 ```bash
 curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash
@@ -10,130 +10,94 @@ A pagina publicada tambem serve o instalador em `/setup.sh`, mantido identico a 
 
 Pagina do projeto: https://integrefacil.github.io/dextermux/
 
-## O que o instalador faz
+## O que instala
 
-1. Le os recursos do aparelho (modelo, Android, nucleos, memoria, espaco livre, rede) e mostra um veredito antes de baixar qualquer coisa.
-2. Abre um menu numerado para escolher a sessao grafica e as ferramentas de desenvolvimento, com o tamanho estimado de cada opcao.
-3. Instala e configura tudo, com progresso por etapa e log em `~/dextermux-install.log`.
-4. Imprime um resumo com URLs, senha, comandos e pendencias manuais.
+- **XFCE4 minimo**: `xfwm4`, `xfce4-panel`, `xfce4-session`, `xfce4-settings`, `xfconf`, `xfdesktop`, `thunar`, `xfce4-terminal`.
+- **TigerVNC** (`Xvnc`) com `VncAuth` na porta 5901.
+- **noVNC + websockify** na porta 6080, com HTTPS autoassinado na LAN.
+- **sshd** na porta 8022, com chave publica opcional.
+- **Cloudflare quick tunnel** opcional, desligado por padrao.
+- **Comandos**: `desktop`, `url`, `dextermux-status`, `dextermux-tls`.
+- **Banner** ao abrir o Termux e autostart no boot via Termux:Boot.
 
-Nao usa emojis, nao depende de `dialog`/`whiptail` e funciona sem terminal interativo quando rodado por pipe ou com `--yes`.
-
-## Sessoes graficas
-
-| Opcao | Descricao | Disco | Estado |
-|-------|-----------|-------|--------|
-| `cinnamon` | Sessao Cinnamon (linha do Linux Mint), padrao | ~1691 MB | validado |
-| `xfce` | XFCE4 padrao, sem restilizacao | ~739 MB | validado |
-| `mate` | Sessao MATE (visual classico do Ubuntu) | ~1345 MB | experimental |
-| `all` | As tres, para comparar antes de decidir | ~2224 MB | comparacao |
-| `none` | Sem desktop, apenas sshd e ferramentas | ~260 MB | validado |
-
-O preset `xfce` instala apenas `xfce4` e `xfdesktop`, sem tema, dock, compositor ou apps extras. A sessao padrao e `cinnamon`.
-
-MATE ainda nao foi validado no aparelho. O `~/.vnc/xstartup` detecta sessao que morre em menos de 15 segundos, registra em `$TMPDIR/session.log` e cai para `xfce`.
+O instalador nao faz perguntas: tudo vem por flag ou variavel de ambiente.
 
 ## Acesso
 
-- Remmina/VNC: `vnc://<ip-do-celular>:5901`
-- Navegador local: `https://<ip-do-celular>:6080/vnc.html`
-- Navegador externo: `<url-do-tunel>/vnc.html`
-- Sessao de teste em paralelo: `https://<ip-do-celular>:6081/vnc.html`
+| Onde | Endereco |
+|------|----------|
+| VNC (LAN) | `vnc://<ip>:5901` |
+| Navegador (LAN) | `https://<ip>:6080/vnc.html` |
+| Navegador (externo, com `--tunnel`) | `<url-do-tunel>/vnc.html` |
+| SSH | `ssh -p 8022 <usuario>@<ip>` |
 
-A porta 6080 usa HTTPS com certificado autoassinado gerado no aparelho. No primeiro acesso o
-navegador mostra um aviso: aceite o certificado e o noVNC conecta por `wss`. O IP entra nas SANs
-automaticamente e o certificado e regenerado quando o IP da LAN muda. Para desligar, use
-`dextermux-tls disable` e rode `desktop`.
+No primeiro acesso HTTPS o navegador mostra um aviso de certificado: aceite uma vez e o noVNC
+conecta por `wss`. O IP da LAN entra nas SANs e o certificado e regenerado quando o IP muda.
 
 ## Comandos
 
 | Comando | Efeito |
 |---------|--------|
-| `desktop` | sobe sshd, Xvnc, websockify e cloudflared |
-| `url` | imprime as URLs e o estado dos servicos |
-| `dextermux-session` | mostra a sessao atual, as instaladas e os displays ativos |
-| `dextermux-session set cinnamon` | troca a sessao padrao e reinicia o VNC |
-| `dextermux-session try mate` | sobe a sessao no display `:2` (noVNC 6081), reiniciando-o se preciso |
-| `dextermux-session try mate 3` | sobe a sessao em outro display (`:3`, noVNC 6082) |
-| `dextermux-session stop` | encerra o display `:2` |
-| `dextermux-session stop 3` | encerra o display `:3` |
-| `dextermux-session remove cinnamon` | remove os pacotes exclusivos da sessao (`xfce`, `cinnamon` ou `mate`) |
-| `dextermux-tls show` | mostra o certificado, as SANs e a validade |
+| `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
+| `url` | mostra IP, portas, TLS e estado |
+| `dextermux-status` | processos, top 5 por memoria, TLS e tunel |
+| `dextermux-tls show` | certificado, SANs e validade |
 | `dextermux-tls renew` | regenera o certificado da LAN |
 | `dextermux-tls enable` / `disable` | liga ou desliga o HTTPS local |
+| `dextermux-tls mode` | imprime `https` ou `http` |
 
-## Flags do instalador
+## Flags
 
 | Flag | Efeito |
 |------|--------|
-| `-y`, `--yes` | nao pergunta nada, usa os padroes |
-| `--desktop=NAME` | `cinnamon` (padrao), `xfce`, `mate`, `all` ou `none` |
-| `--dev=LIST` | `core`, `web`, `rust`, `go`, `java`, `db`, `browser` ou `none` |
 | `--geometry=WxH` | resolucao inicial (default `1600x900`) |
 | `--password=PASS` | senha do VNC (max. 8 caracteres) |
 | `--ssh-pubkey=KEY` | chave publica para `authorized_keys` |
-| `--tunnel` / `--no-tunnel` | liga ou desliga o Cloudflare (default ligado) |
+| `--tunnel` / `--no-tunnel` | liga ou desliga o Cloudflare (default desligado) |
 | `--tls` / `--no-tls` | HTTPS autoassinado na LAN (default ligado) |
-| `--repair` | nao instala pacotes, apenas regrava configs e reinicia |
-| `--dry-run` | mostra o plano e sai sem alterar nada |
-| `--list` | lista presets, tamanhos e perfis |
+| `--repair` | nao instala pacotes; regrava configs e reinicia |
+| `--dry-run` | mostra o plano e sai |
+| `--version` | versao do instalador |
 
-Variaveis de ambiente continuam aceitas: `VNC_PASS`, `GEOMETRY`, `NOVNC_VER`, `SSH_PUBKEY`, `TUNNEL`, `DEXTERMUX_ASCII=1`, `DEXTERMUX_NO_UPDATE=1`.
+Variaveis aceitas: `VNC_PASS`, `GEOMETRY`, `NOVNC_VER`, `SSH_PUBKEY`, `TUNNEL`, `TLS`,
+`DEXTERMUX_ASCII=1`, `DEXTERMUX_NO_UPDATE=1`.
 
-## Perfis de desenvolvimento
-
-| Grupo | Pacotes | Disco |
-|-------|---------|-------|
-| `core` | git, gh, neovim, tmux, zsh, starship, ripgrep, fd, fzf, jq, lazygit, eza, bat, zoxide, htop, micro, rsync | ~255 MB |
-| `web` | nodejs-lts, php, composer, python-pip | ~270 MB |
-| `rust` | rust | ~1104 MB |
-| `go` | golang | ~725 MB |
-| `java` | openjdk-17, gradle, kotlin, clang, make, cmake, android-tools | ~1365 MB |
-| `db` | mariadb, postgresql, sqlite, redis, nginx | ~296 MB |
-| `browser` | chromium | ~1278 MB |
-
-## Modos de execucao
+Exemplos:
 
 ```bash
-# interativo, recomendado (URL curta da pagina)
-curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash
-
-# interativo sem gravar arquivo
-bash <(curl -fsSL https://integrefacil.github.io/dextermux/setup.sh)
-
-# pipe direto (interativo se houver terminal, automatico sem terminal)
-curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash
-
-# automatico com escolhas
+# chave SSH e senha definidas
 curl -fsSL https://integrefacil.github.io/dextermux/setup.sh \
-  | VNC_PASS=MinhaSen bash -s -- --desktop=cinnamon --dev=core,web
+  | VNC_PASS=MinhaSen SSH_PUBKEY="ssh-ed25519 AAAA... usuario@pc" bash
+
+# com tunel publico
+curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash -s -- --tunnel
+
+# aplicar mudancas sem reinstalar
+bash setup.sh --repair --no-tls
 ```
 
-A pagina publicada serve o instalador em `/setup.sh`. O arquivo `docs/setup.sh` e uma copia
-sincronizada automaticamente por CI (`.github/workflows/sync-setup.yml`) a cada push em `setup.sh`.
-A fonte canonica continua sendo o `setup.sh` da raiz.
+## Limite de 32 processos (Android 12+)
 
-Em `curl | bash` o stdin e o proprio script, entao o instalador abre `/dev/tty` para ler as respostas sem consumir o codigo. Sem terminal disponivel, ele usa os padroes.
+O Android 12 introduziu o **phantom process killer**: processos criados por apps fora do ciclo de
+componentes sao mortos com `SIGKILL` (signal 9) acima de 32 no total. Nao e um limite do Termux e
+nao aparece como mensagem no terminal.
 
-## Limpeza do preset antigo
-
-Se voce instalou a versao com XFCE restilizado (rofi, plank, picom, Arc, apps GNOME), o script nao
-remove nada sozinho. Para limpar o aparelho:
+O stack deste projeto fica em ~11 processos ocioso e ~17 com terminal, SSH e Thunar abertos.
+Para medir:
 
 ```bash
-rm -f ~/.dextermux/theme.sh ~/.dextermux/wallpaper.svg "$PREFIX/bin/dextermux-theme"
-rm -rf ~/.config/rofi ~/.config/plank
-rm -f ~/.config/picom.conf ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml
-rm -f ~/.local/share/fonts/Ubuntu-*.ttf
-pkg uninstall -y rofi plank-reloaded picom arc-gtk-theme xfce4-whiskermenu-plugin
-pkg autoremove -y
-pkg clean
+dextermux-status
 ```
 
-`gnome-terminal` fica instalado de proposito: e o terminal padrao do Cinnamon. `gsettings-desktop-schemas`
-tambem fica, porque e dependencia do Cinnamon. O `autoremove` remove apenas o que ninguem mais usa.
+Faixas: ate 23 `ok`, 24-29 `atencao`, 30+ `critico`.
 
-A sessao `ubuntu` antiga passa a ser lida como `xfce`, entao nao e preciso mexer em `~/.dextermux/session`.
+Para elevar o limite (opcional, via PC com ADB, sem root):
+
+```bash
+adb shell settings put global settings_enable_monitor_phantom_procs false
+adb shell device_config put activity_manager max_phantom_processes 2147483647
+adb shell dumpsys activity settings | grep max_phantom_processes
+```
 
 ## Pendencias manuais
 
@@ -142,6 +106,7 @@ A sessao `ubuntu` antiga passa a ser lida como `xfce`, entao nao e preciso mexer
 3. Bateria -> Limites de uso em segundo plano -> Apps que nunca dormem -> Termux.
 4. Remover o Termux de Apps em suspensao e suspensao profunda.
 5. Reservar o IP do celular no roteador.
+6. No primeiro acesso HTTPS, aceitar o certificado autoassinado.
 
 ## Documentacao
 
@@ -154,4 +119,5 @@ A sessao `ubuntu` antiga passa a ser lida como `xfce`, entao nao e preciso mexer
 
 ## Nao usa xrdp
 
-O pacote `xrdp 0.10.6.1` do Termux tem bug de autenticacao (`Bugcheck; inconsistent auth result`). O caminho suportado e VNC + noVNC.
+O pacote `xrdp 0.10.6.1` do Termux tem bug de autenticacao (`Bugcheck; inconsistent auth result`).
+O caminho suportado e VNC + noVNC.

@@ -1,69 +1,57 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# dextermux - instalador do ambiente remoto no Termux
+# dextermux - ambiente remoto no Termux, focado em XFCE4
 #
 # Instala e configura:
-#   - Diagnostico de recursos antes de qualquer download
-#   - Interface interativa numerada (sem emojis, sem dependencias)
-#   - Sessao grafica escolhida: Cinnamon (padrao), XFCE, MATE ou nenhuma
-#   - TigerVNC (Xvnc) com VncAuth, resolucao configuravel e accept-resize
-#   - noVNC + websockify (navegador, porta 6080)
-#   - Cloudflare quick tunnel (HTTPS publico, opcional)
-#   - HTTPS autoassinado na LAN para o noVNC (porta 6080)
-#   - sshd + chave autorizada
-#   - Banner com as URLs, comandos "url", "desktop" e "dextermux-session"
-#   - Autostart no boot (Termux:Boot)
+#   - XFCE4 minimo (xfwm4, painel, sessao, settings, xfconf, xfdesktop, thunar, terminal)
+#   - TigerVNC (Xvnc) com VncAuth e resolucao configuravel
+#   - noVNC + websockify com HTTPS autoassinado na LAN (porta 6080)
+#   - sshd com chave publica opcional (porta 8022)
+#   - Cloudflare quick tunnel (desligado por padrao)
+#   - Banner com as URLs, comandos "desktop", "url", "dextermux-tls" e "dextermux-status"
+#   - Autostart no boot via Termux:Boot
 #
-# Uso interativo:
-#   curl -fsSL <URL_RAW> -o setup.sh && bash setup.sh
-#   bash <(curl -fsSL <URL_RAW>)
-#   curl -fsSL <URL_RAW> | bash          # interativo se houver terminal; senao usa os padroes
-#
-# Uso nao interativo:
-#   bash setup.sh --yes --desktop=cinnamon --dev=core,web
-#   curl -fsSL <URL_RAW> | VNC_PASS=MinhaSen bash
+# Uso:
+#   curl -fsSL <URL> | bash
+#   bash setup.sh
+#   bash setup.sh --tunnel --ssh-pubkey "ssh-ed25519 AAAA..."
 #
 # Flags:
-#   -y, --yes              nao pergunta nada, usa os padroes
-#   --desktop=NAME         cinnamon | xfce | mate | all | none
-#   --dev=LIST             core,web,rust,go,java,db,browser (ou none)
 #   --geometry=WxH         resolucao inicial (default 1600x900)
 #   --password=PASS        senha do VNC (max. 8 caracteres)
 #   --ssh-pubkey=KEY       chave publica para authorized_keys
-#   --tunnel / --no-tunnel liga ou desliga o Cloudflare (default ligado)
-#   --tls / --no-tls      HTTPS autoassinado na LAN (default ligado)
+#   --tunnel / --no-tunnel liga ou desliga o Cloudflare (default desligado)
+#   --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
 #   --repair               nao instala pacotes, apenas regrava configs e reinicia
 #   --dry-run              mostra o plano e sai sem alterar nada
-#   --list                 lista presets, tamanhos e perfis
-#   -h, --help             ajuda
+#   --version              versao do instalador
+#   -h, --help             esta ajuda
 #
-# Variaveis de ambiente (compatibilidade):
+# Variaveis de ambiente:
 #   VNC_PASS, GEOMETRY, NOVNC_VER, SSH_PUBKEY, TUNNEL, TLS
 #   DEXTERMUX_ASCII=1      desenha sem caracteres de caixa
 #   DEXTERMUX_NO_UPDATE=1  pula "pkg update"
 #
+# O instalador nao faz perguntas. Tudo vem por flag ou variavel de ambiente.
 # NAO usa xrdp: o pacote 0.10.6.1 do Termux tem bug de autenticacao
 # ("Bugcheck; inconsistent auth result"). Use VNC/noVNC.
 
 set -eu
 export DEBIAN_FRONTEND=noninteractive
 
-DEXTERMUX_VERSION="2.0.0"
+DEXTERMUX_VERSION="3.0.0"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
 GEOMETRY="${GEOMETRY:-1600x900}"
 NOVNC_VER="${NOVNC_VER:-1.5.0}"
-TUNNEL="${TUNNEL:-1}"
+TUNNEL="${TUNNEL:-0}"
 TLS="${TLS:-1}"
 SSH_PUBKEY="${SSH_PUBKEY:-}"
 VNC_PASS="${VNC_PASS:-}"
 
-DESKTOP="cinnamon"
-DEV_GROUPS="core web"
 MODE="install"
 DRY_RUN=0
-INTERACTIVE=1
-TOTAL_STEPS=16
+TOTAL_STEPS=12
 STEP_NO=0
 LOG="$H/dextermux-install.log"
 
@@ -119,12 +107,6 @@ die() {
     exit 1
 }
 
-clear_screen() {
-    if [ "$INTERACTIVE" = "1" ]; then
-        printf '\033[2J\033[H'
-    fi
-}
-
 step() {
     STEP_NO=$((STEP_NO + 1))
     printf '\n%s[%02d/%02d]%s %s%s%s\n' \
@@ -134,86 +116,37 @@ step() {
 
 banner() {
     printf '\n%s%sdextermux %s%s\n' "$C_B" "$C_ACC" "$DEXTERMUX_VERSION" "$C_RESET"
-    printf '%sDesktop remoto no Termux com VNC, noVNC e tunel.%s\n' "$C_DIM" "$C_RESET"
+    printf '%sXFCE4 remoto no Termux com VNC, noVNC e SSH.%s\n' "$C_DIM" "$C_RESET"
     rule
 }
 
 usage() {
     cat <<'TXT'
-dextermux - desktop remoto no Termux
+dextermux - XFCE4 remoto no Termux
 
-Uso interativo:
-  curl -fsSL <URL_RAW> -o setup.sh && bash setup.sh
-  bash <(curl -fsSL <URL_RAW>)
-  curl -fsSL <URL_RAW> | bash          # interativo se houver terminal; senao usa os padroes
-
-Uso nao interativo:
-  bash setup.sh --yes --desktop=cinnamon --dev=core,web
+Uso:
+  curl -fsSL <URL> | bash
+  bash setup.sh
+  bash setup.sh --tunnel --ssh-pubkey "ssh-ed25519 AAAA..."
 
 Flags:
-  -y, --yes              nao pergunta nada, usa os padroes
-  --desktop=NAME         cinnamon | xfce | mate | all | none
-  --dev=LIST             core,web,rust,go,java,db,browser (ou none)
   --geometry=WxH         resolucao inicial (default 1600x900)
   --password=PASS        senha do VNC (max. 8 caracteres)
   --ssh-pubkey=KEY       chave publica para authorized_keys
-  --tunnel / --no-tunnel liga ou desliga o Cloudflare (default ligado)
+  --tunnel / --no-tunnel liga ou desliga o Cloudflare (default desligado)
   --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
   --repair               nao instala pacotes, apenas regrava configs e reinicia
   --dry-run              mostra o plano e sai sem alterar nada
-  --list                 lista presets, tamanhos e perfis
+  --version              versao do instalador
   -h, --help             esta ajuda
 
 Variaveis de ambiente:
   VNC_PASS, GEOMETRY, NOVNC_VER, SSH_PUBKEY, TUNNEL, TLS
   DEXTERMUX_ASCII=1      desenha sem caracteres de caixa
   DEXTERMUX_NO_UPDATE=1  pula "pkg update"
+
+O instalador nao faz perguntas.
 TXT
-}
-
-# ---------------------------------------------------------------- entrada
-
-open_tty() {
-    if [ "$INTERACTIVE" != "1" ]; then
-        return 0
-    fi
-    if ( exec 3</dev/tty ) 2>/dev/null; then
-        exec 3</dev/tty
-    else
-        INTERACTIVE=0
-        warn "sem terminal interativo: usando os padroes"
-    fi
-}
-
-ask() {
-    local prompt="$1" default="${2:-}" answer
-    if [ "$INTERACTIVE" != "1" ]; then
-        printf '%s\n' "$default"
-        return 0
-    fi
-    printf '  %s%s%s ' "$C_B" "$prompt" "$C_RESET" >&2
-    read -r answer <&3 || answer=""
-    [ -z "$answer" ] && answer="$default"
-    printf '%s\n' "$answer"
-}
-
-ask_secret() {
-    local prompt="$1" answer
-    if [ "$INTERACTIVE" != "1" ]; then
-        printf '%s\n' "${VNC_PASS}"
-        return 0
-    fi
-    printf '  %s%s%s ' "$C_B" "$prompt" "$C_RESET" >&2
-    read -rs answer <&3 || answer=""
-    printf '\n' >&2
-    printf '%s\n' "$answer"
-}
-
-pause_screen() {
-    if [ "$INTERACTIVE" = "1" ]; then
-        printf '\n  %sEnter para continuar%s ' "$C_DIM" "$C_RESET"
-        read -r _ <&3 || true
-    fi
 }
 
 # ---------------------------------------------------------------- sistema
@@ -232,12 +165,7 @@ detect_resources() {
     MEM_FREE_MB=$((avail_kb / 1024))
 
     DISK_FREE_MB=$(disk_free_mb "$HOME")
-
-    if [ -f "$P/bin/pkg" ] || command -v pkg >/dev/null 2>&1; then
-        TERMUX_STATE="ok"
-    else
-        TERMUX_STATE="ausente"
-    fi
+    PROC_COUNT=$(process_count)
 
     if curl -fsS -m 8 -o /dev/null "https://packages.termux.dev/" 2>/dev/null; then
         NET_PKG="ok"
@@ -254,9 +182,6 @@ detect_resources() {
     if [ -f "$H/start-desktop.sh" ] || [ -f "$H/.vnc/passwd" ]; then
         EXISTING="sim"
     fi
-
-    INSTALLED_SESSIONS=$(session_installed_list)
-    ACTIVE_SESSION=$(current_session)
 }
 
 disk_free_mb() {
@@ -271,115 +196,48 @@ disk_free_mb() {
     printf '%s\n' "$((kb / 1024))"
 }
 
-session_installed_list() {
-    local out=""
-    command -v startxfce4 >/dev/null 2>&1 && out="$out xfce"
-    command -v cinnamon-session >/dev/null 2>&1 && out="$out cinnamon"
-    command -v mate-session >/dev/null 2>&1 && out="$out mate"
-    printf '%s\n' "${out# }"
-}
-
-current_session() {
-    local s
-    s=$(cat "$H/.dextermux/session" 2>/dev/null || echo "cinnamon")
-    if [ "$s" = "ubuntu" ]; then s="xfce"; fi
-    printf '%s\n' "$s"
-}
-
-session_available() {
-    case "$1" in
-        xfce|ubuntu) command -v startxfce4 >/dev/null 2>&1 ;;
-        cinnamon) command -v cinnamon-session >/dev/null 2>&1 ;;
-        mate) command -v mate-session >/dev/null 2>&1 ;;
-        *) return 1 ;;
-    esac
-}
-
-# ---------------------------------------------------------------- tamanhos
-
-SIZE_BASE=260
-SIZE_XFCE=739
-SIZE_CINNAMON=1691
-SIZE_MATE=1345
-SIZE_ALL=2224
-SIZE_NONE=260
-SIZE_DEV_CORE=255
-SIZE_DEV_WEB=270
-SIZE_DEV_RUST=1104
-SIZE_DEV_GO=725
-SIZE_DEV_JAVA=1365
-SIZE_DEV_DB=296
-SIZE_DEV_BROWSER=1278
-
-desktop_size() {
-    case "$1" in
-        xfce) printf '%s\n' "$SIZE_XFCE" ;;
-        cinnamon) printf '%s\n' "$SIZE_CINNAMON" ;;
-        mate) printf '%s\n' "$SIZE_MATE" ;;
-        all) printf '%s\n' "$SIZE_ALL" ;;
-        *) printf '%s\n' "$SIZE_NONE" ;;
-    esac
-}
-
-dev_size() {
-    local total=0 g
-    for g in $1; do
-        case "$g" in
-            core) total=$((total + SIZE_DEV_CORE)) ;;
-            web) total=$((total + SIZE_DEV_WEB)) ;;
-            rust) total=$((total + SIZE_DEV_RUST)) ;;
-            go) total=$((total + SIZE_DEV_GO)) ;;
-            java) total=$((total + SIZE_DEV_JAVA)) ;;
-            db) total=$((total + SIZE_DEV_DB)) ;;
-            browser) total=$((total + SIZE_DEV_BROWSER)) ;;
-        esac
-    done
-    printf '%s\n' "$total"
-}
-
-dev_label() {
-    case "$1" in
-        core) printf 'Core CLI' ;;
-        web) printf 'Web' ;;
-        rust) printf 'Rust' ;;
-        go) printf 'Go' ;;
-        java) printf 'Java/Kotlin' ;;
-        db) printf 'Bancos' ;;
-        browser) printf 'Chromium' ;;
-        *) printf '%s' "$1" ;;
-    esac
-}
-
-dev_labels() {
-    local out="" g
-    for g in $1; do
-        out="$out, $(dev_label "$g")"
-    done
-    printf '%s\n' "${out#, }"
-}
-
-estimated_total_mb() {
-    local d
-    d=$(desktop_size "$DESKTOP")
-    if [ "$DESKTOP" = "none" ]; then
-        d=$SIZE_BASE
+process_count() {
+    local n
+    n=$(ps -u "$(id -u)" -o pid= 2>/dev/null | wc -l | tr -d ' ')
+    if [ -z "$n" ] || [ "$n" = "0" ]; then
+        n=0
+        for d in /proc/[0-9]*; do
+            if [ -d "$d" ] && [ -O "$d" ]; then n=$((n + 1)); fi
+        done
     fi
-    printf '%s\n' "$((d + $(dev_size "$DEV_GROUPS")))"
+    printf '%s\n' "${n:-0}"
+}
+
+process_verdict() {
+    local n="$1"
+    if [ "$n" -ge 30 ]; then
+        printf 'critico'
+    elif [ "$n" -ge 24 ]; then
+        printf 'atencao'
+    else
+        printf 'ok'
+    fi
+}
+
+print_resources() {
+    banner
+    section "Recursos do sistema"
+    row "Aparelho" "$DEVICE_MODEL"
+    row "Android" "$ANDROID_VER (SDK $ANDROID_SDK)"
+    row "Arquitetura" "$ABI"
+    row "Nucleos" "$CORES"
+    row "Memoria" "$MEM_TOTAL_MB MB total, $MEM_FREE_MB MB livre"
+    row "Armazenamento" "$DISK_FREE_MB MB livres em \$HOME"
+    row "Rede (pacotes)" "$NET_PKG"
+    row "Rede (github)" "$NET_GH"
+    row "Processos" "$PROC_COUNT ($(process_verdict "$PROC_COUNT"))"
+    row "Instalacao" "$EXISTING"
 }
 
 # ---------------------------------------------------------------- pacotes
 
-PKGS_BASE="tigervnc openssh openssl-tool python net-tools cloudflared curl tar git"
-PKGS_XFCE="xfce4 xfdesktop ttf-dejavu"
-PKGS_CINNAMON="cinnamon nemo cinnamon-session cinnamon-settings-daemon cinnamon-control-center mint-themes mint-y-icon-theme"
-PKGS_MATE="mate mate-applet-brisk-menu mate-tweak"
-PKGS_DEV_CORE="gh neovim tmux zsh starship ripgrep fd fzf jq lazygit eza bat zoxide htop micro rsync unzip wget"
-PKGS_DEV_WEB="nodejs-lts php composer python-pip"
-PKGS_DEV_RUST="rust"
-PKGS_DEV_GO="golang"
-PKGS_DEV_JAVA="openjdk-17 gradle kotlin clang make cmake android-tools"
-PKGS_DEV_DB="mariadb postgresql sqlite redis nginx"
-PKGS_DEV_BROWSER="chromium"
+PKGS_BASE="tigervnc openssh openssl-tool python net-tools cloudflared curl tar dbus"
+PKGS_XFCE="xfwm4 xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop thunar xfce4-terminal ttf-dejavu"
 
 pkg_installed() {
     dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"
@@ -398,292 +256,9 @@ install_pkgs() {
     info "instalando: $missing"
     # shellcheck disable=SC2086
     pkg install -y $missing 2>&1 | tee -a "$LOG"
-    local st=${PIPESTATUS[0]}
-    if [ "$st" -ne 0 ]; then
+    if [ "${PIPESTATUS[0]}" -ne 0 ]; then
         die "falha ao instalar: $missing"
     fi
-}
-
-desktop_pkg_list() {
-    case "$1" in
-        xfce) printf '%s\n' "$PKGS_XFCE" ;;
-        cinnamon) printf '%s\n' "$PKGS_CINNAMON" ;;
-        mate) printf '%s\n' "$PKGS_MATE" ;;
-        *) printf '\n' ;;
-    esac
-}
-
-dev_pkg_list() {
-    local out="" g
-    for g in $1; do
-        case "$g" in
-            core) out="$out $PKGS_DEV_CORE" ;;
-            web) out="$out $PKGS_DEV_WEB" ;;
-            rust) out="$out $PKGS_DEV_RUST" ;;
-            go) out="$out $PKGS_DEV_GO" ;;
-            java) out="$out $PKGS_DEV_JAVA" ;;
-            db) out="$out $PKGS_DEV_DB" ;;
-            browser) out="$out $PKGS_DEV_BROWSER" ;;
-        esac
-    done
-    printf '%s\n' "${out# }"
-}
-
-# ---------------------------------------------------------------- telas
-
-screen_resources() {
-    clear_screen
-    banner
-    section "Recursos do sistema"
-    row "Aparelho" "$DEVICE_MODEL"
-    row "Android" "$ANDROID_VER (SDK $ANDROID_SDK)"
-    row "Arquitetura" "$ABI"
-    row "Nucleos" "$CORES"
-    row "Memoria" "$MEM_TOTAL_MB MB total, $MEM_FREE_MB MB livre"
-    row "Armazenamento" "$DISK_FREE_MB MB livres em \$HOME"
-    row "Rede (pacotes)" "$NET_PKG"
-    row "Rede (github)" "$NET_GH"
-    row "Termux" "$TERMUX_STATE"
-    if [ "$EXISTING" = "sim" ]; then
-        row "Instalacao" "detectada (sessao: $ACTIVE_SESSION)"
-    else
-        row "Instalacao" "nenhuma"
-    fi
-    if [ -n "$INSTALLED_SESSIONS" ]; then
-        row "Sessoes" "$INSTALLED_SESSIONS"
-    fi
-
-    section "Veredito"
-    local need=1400
-    if [ "$DISK_FREE_MB" -lt "$need" ]; then
-        err "espaco insuficiente: $DISK_FREE_MB MB livres, minimo $need MB"
-        info "libere espaco ou escolha 'Sem desktop' no menu seguinte"
-    elif [ "$DISK_FREE_MB" -lt 3500 ]; then
-        warn "espaco justo para Cinnamon; 'Todas as tres' nao cabe"
-    else
-        ok "espaco suficiente para qualquer preset"
-    fi
-    if [ "$MEM_TOTAL_MB" -lt 2000 ]; then
-        warn "memoria total baixa (${MEM_TOTAL_MB} MB); Cinnamon pode ficar lento"
-    else
-        ok "memoria adequada (${MEM_TOTAL_MB} MB)"
-    fi
-    if [ "$CORES" -lt 4 ]; then
-        warn "poucos nucleos ($CORES); sessoes com compositor pesam"
-    else
-        ok "processamento adequado ($CORES nucleos)"
-    fi
-    if [ "$NET_PKG" != "ok" ] || [ "$NET_GH" != "ok" ]; then
-        warn "rede instavel: a instalacao pode falhar no meio"
-    fi
-
-    pause_screen
-}
-
-screen_desktop() {
-    local choice
-    if [ "$INTERACTIVE" != "1" ]; then
-        return 0
-    fi
-    while true; do
-        clear_screen
-        banner
-        section "Ambiente grafico"
-        printf '  1  %-38s %7s MB  %s\n' "Cinnamon (Mint-like)" "~$SIZE_CINNAMON" "padrao"
-        printf '  2  %-38s %7s MB  %s\n' "XFCE (visual padrao)" "~$SIZE_XFCE" "validado"
-        printf '  3  %-38s %7s MB  %s\n' "MATE (classico)" "~$SIZE_MATE" "experimental"
-        printf '  4  %-38s %7s MB  %s\n' "Todas as tres (avaliacao)" "~$SIZE_ALL" "comparar"
-        printf '  5  %-38s %7s MB  %s\n' "Sem desktop (so servidor)" "~$SIZE_NONE" "leve"
-        printf '\n  %s1: sessao completa do Linux Mint, sem tema extra.%s\n' "$C_DIM" "$C_RESET"
-        printf '  %s2: XFCE4 padrao, sem restilizacao.%s\n' "$C_DIM" "$C_RESET"
-        printf '  %s4: instala as tres e permite alternar com "dextermux-session".%s\n' "$C_DIM" "$C_RESET"
-        choice=$(ask "Escolha [1-5] (padrao 1):" "1")
-        case "$choice" in
-            1) DESKTOP="cinnamon"; return 0 ;;
-            2) DESKTOP="xfce"; return 0 ;;
-            3) DESKTOP="mate"; return 0 ;;
-            4) DESKTOP="all"; return 0 ;;
-            5) DESKTOP="none"; return 0 ;;
-            *) warn "opcao invalida"; sleep 1 ;;
-        esac
-    done
-}
-
-screen_dev() {
-    local sel="${DEV_GROUPS:-}" choice g
-    if [ "$INTERACTIVE" != "1" ]; then
-        return 0
-    fi
-    while true; do
-        clear_screen
-        banner
-        section "Ferramentas de desenvolvimento"
-        printf '  Marque os grupos desejados. Enter confirma.\n\n'
-        dev_line "$sel" core 1 "Core CLI (git, gh, neovim, tmux)" "~$SIZE_DEV_CORE MB"
-        dev_line "$sel" web 2 "Web (Node, PHP, Composer, Python)" "~$SIZE_DEV_WEB MB"
-        dev_line "$sel" rust 3 "Rust" "~$SIZE_DEV_RUST MB"
-        dev_line "$sel" go 4 "Go" "~$SIZE_DEV_GO MB"
-        dev_line "$sel" java 5 "Java, Kotlin, Gradle, clang, cmake" "~$SIZE_DEV_JAVA MB"
-        dev_line "$sel" db 6 "Bancos (MariaDB, Postgres, Redis) e nginx" "~$SIZE_DEV_DB MB"
-        dev_line "$sel" browser 7 "Chromium no desktop" "~$SIZE_DEV_BROWSER MB"
-        printf '\n  %sDigite numeros separados (ex: 1 3), "a" tudo, "n" nada.%s\n' "$C_DIM" "$C_RESET"
-        choice=$(ask "Selecao:" "")
-        case "$choice" in
-            "") DEV_GROUPS="$sel"; return 0 ;;
-            a|A) sel="core web rust go java db browser" ;;
-            n|N) sel="" ;;
-            *)
-                for g in $choice; do
-                    case "$g" in
-                        1) sel=$(toggle "$sel" core) ;;
-                        2) sel=$(toggle "$sel" web) ;;
-                        3) sel=$(toggle "$sel" rust) ;;
-                        4) sel=$(toggle "$sel" go) ;;
-                        5) sel=$(toggle "$sel" java) ;;
-                        6) sel=$(toggle "$sel" db) ;;
-                        7) sel=$(toggle "$sel" browser) ;;
-                        *) warn "numero invalido: $g" ;;
-                    esac
-                done
-                ;;
-        esac
-    done
-}
-
-dev_line() {
-    printf '  %s %s  %-42s %10s\n' "$(mark "$1" "$2")" "$3" "$4" "$5"
-}
-
-# marca [x] ou [ ] para o grupo
-mark() {
-    local list="$1" item="$2" x
-    for x in $list; do
-        if [ "$x" = "$item" ]; then
-            printf '[x]'
-            return 0
-        fi
-    done
-    printf '[ ]'
-}
-
-toggle() {
-    local list="$1" item="$2" out="" x found=0
-    for x in $list; do
-        if [ "$x" = "$item" ]; then
-            found=1
-        else
-            out="$out $x"
-        fi
-    done
-    if [ "$found" = "0" ]; then
-        out="$out $item"
-    fi
-    printf '%s\n' "${out# }"
-}
-
-screen_remote() {
-    local answer
-    if [ "$INTERACTIVE" != "1" ]; then
-        return 0
-    fi
-    clear_screen
-    banner
-    section "Acesso remoto"
-
-    if [ "$DESKTOP" = "none" ]; then
-        TUNNEL=0
-        printf '  Sem desktop: apenas sshd na porta 8022.\n\n'
-        if [ -z "$SSH_PUBKEY" ]; then
-            answer=$(ask "Chave publica SSH (Enter para pular):" "")
-            SSH_PUBKEY="$answer"
-        fi
-        return 0
-    fi
-
-    printf '  Tunel publico do Cloudflare expoe o noVNC na internet.\n'
-    printf '  A unica barreira e a senha de 8 caracteres do VNC.\n\n'
-    answer=$(ask "Ligar tunel publico? [S/n]:" "$([ "$TUNNEL" = "1" ] && echo s || echo n)")
-    case "$answer" in
-        s|S|y|Y) TUNNEL=1 ;;
-        *) TUNNEL=0 ;;
-    esac
-
-    printf '\n  HTTPS autoassinado na LAN evita trafego em texto claro na porta 6080.\n'
-    printf '  O navegador mostra um aviso de certificado no primeiro acesso.\n\n'
-    answer=$(ask "Usar HTTPS autoassinado na LAN? [S/n]:" "$([ "$TLS" = "1" ] && echo s || echo n)")
-    case "$answer" in
-        s|S|y|Y) TLS=1 ;;
-        *) TLS=0 ;;
-    esac
-
-    if [ -z "$VNC_PASS" ] && [ ! -f "$H/.vnc/passwd" ]; then
-        answer=$(ask_secret "Senha do VNC (Enter para gerar aleatoria):")
-        if [ -n "$answer" ]; then
-            VNC_PASS="$answer"
-        fi
-    fi
-
-    answer=$(ask "Geometria inicial [1600x900]:" "$GEOMETRY")
-    case "$answer" in
-        [0-9]*x[0-9]*) GEOMETRY="$answer" ;;
-        *) warn "geometria invalida, mantendo $GEOMETRY" ;;
-    esac
-
-    if [ -z "$SSH_PUBKEY" ]; then
-        answer=$(ask "Chave publica SSH (Enter para pular):" "")
-        SSH_PUBKEY="$answer"
-    fi
-}
-
-screen_confirm() {
-    local answer total free
-    if [ "$INTERACTIVE" != "1" ]; then
-        return 0
-    fi
-    total=$(estimated_total_mb)
-    free=$DISK_FREE_MB
-    while true; do
-        clear_screen
-        banner
-        section "Resumo da instalacao"
-        case "$DESKTOP" in
-            xfce) row "Desktop" "XFCE (visual padrao)" ;;
-            cinnamon) row "Desktop" "Cinnamon (padrao)" ;;
-            mate) row "Desktop" "MATE (experimental)" ;;
-            all) row "Desktop" "Todas as tres sessoes" ;;
-            *) row "Desktop" "nenhum" ;;
-        esac
-        if [ -n "$DEV_GROUPS" ]; then
-            row "Dev" "$(dev_labels "$DEV_GROUPS")"
-        else
-            row "Dev" "nenhum"
-        fi
-        if [ "$DESKTOP" = "none" ]; then
-            row "Tunel" "desligado"
-            row "SSH" "sshd na 8022"
-        else
-            row "Tunel" "$([ "$TUNNEL" = "1" ] && echo ligado || echo desligado)"
-            row "HTTPS LAN" "$([ "$TLS" = "1" ] && echo autoassinado || echo desligado)"
-            row "Geometria" "$GEOMETRY"
-            row "Senha VNC" "$([ -n "$VNC_PASS" ] && echo definida || echo "manter/gerar")"
-            row "Chave SSH" "$([ -n "$SSH_PUBKEY" ] && echo fornecida || echo nao)"
-        fi
-        row "Estimativa" "~$total MB de disco"
-        row "Espaco livre" "$free MB"
-        if [ "$total" -gt "$free" ]; then
-            warn "estimativa maior que o espaco livre"
-        fi
-        printf '\n  1  Confirmar e instalar\n'
-        printf '  2  Voltar e refazer as escolhas\n'
-        printf '  3  Sair\n'
-        answer=$(ask "Escolha [1-3] (padrao 1):" "1")
-        case "$answer" in
-            1) return 0 ;;
-            2) return 1 ;;
-            3) printf '  saindo.\n'; exit 0 ;;
-            *) warn "opcao invalida" ;;
-        esac
-    done
 }
 
 # ---------------------------------------------------------------- arquivos
@@ -692,42 +267,19 @@ write_xstartup() {
     mkdir -p "$H/.vnc"
     cat >"$H/.vnc/xstartup" <<'EOF'
 #!/data/data/com.termux/files/usr/bin/sh
-# Gerado por dextermux. A sessao e lida de ~/.dextermux/session.
+# Gerado por dextermux. Sessao XFCE4 unica.
 unset SESSION_MANAGER
 export PATH="/data/data/com.termux/files/usr/bin:$PATH"
 export XDG_RUNTIME_DIR="$TMPDIR"
-
-DISP="${DISPLAY#:}"
-SESSION=$(cat "$HOME/.dextermux/session.$DISP" 2>/dev/null || cat "$HOME/.dextermux/session" 2>/dev/null || echo cinnamon)
-if [ "$SESSION" = "ubuntu" ]; then SESSION=xfce; fi
-mkdir -p "$HOME/.dextermux"
-echo "$SESSION" >"$HOME/.dextermux/running.$DISP"
+# evita at-spi e daemons de acessibilidade
+export NO_AT_BRIDGE=1
+export GTK_A11Y=none
 
 if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && command -v dbus-launch >/dev/null 2>&1; then
     eval "$(dbus-launch --sh-syntax --exit-with-session)" 2>/dev/null || true
 fi
 
-case "$SESSION" in
-    cinnamon) CMD=cinnamon-session ;;
-    mate) CMD=mate-session ;;
-    *) CMD=startxfce4 ;;
-esac
-
-"$CMD" &
-PID=$!
-i=0
-while [ $i -lt 15 ]; do
-    kill -0 "$PID" 2>/dev/null || break
-    i=$((i + 1))
-    sleep 1
-done
-if kill -0 "$PID" 2>/dev/null; then
-    wait "$PID"
-else
-    echo "$(date) sessao $SESSION falhou; usando xfce" >>"$TMPDIR/session.log"
-    echo xfce >"$HOME/.dextermux/running.$DISP"
-    exec startxfce4
-fi
+exec startxfce4
 EOF
     chmod +x "$H/.vnc/xstartup"
 }
@@ -735,52 +287,25 @@ EOF
 write_start_desktop() {
     cat >"$H/start-desktop.sh" <<'EOF'
 #!/data/data/com.termux/files/usr/bin/sh
-# Gerado por dextermux. Uso: start-desktop.sh [display] [sessao]
-DISP="${1:-1}"
-SESSION="${2:-}"
-PORT=$((6080 + DISP - 1))
-VNCPORT=$((5900 + DISP))
+# Gerado por dextermux. Uso: start-desktop.sh
 DIR="$HOME/.dextermux"
+PORT=6080
+VNCPORT=5901
 mkdir -p "$DIR"
-
-if [ -n "$SESSION" ]; then
-    ACTIVE=$(cat "$DIR/running.$DISP" 2>/dev/null || echo "")
-    if [ "$ACTIVE" != "$SESSION" ] && pgrep -f "[X]vnc :$DISP" >/dev/null; then
-        echo "trocando :$DISP de ${ACTIVE:-desconhecida} para $SESSION"
-        vncserver -kill :"$DISP" >/dev/null 2>&1 || true
-        sleep 1
-        rm -f "$TMPDIR/.X$DISP-lock" "$TMPDIR/.X11-unix/X$DISP" "$HOME/.vnc/"*:"$DISP".pid 2>/dev/null || true
-    fi
-    echo "$SESSION" >"$DIR/session.$DISP"
-fi
-
-EFFECTIVE=$(cat "$DIR/session.$DISP" 2>/dev/null || cat "$DIR/session" 2>/dev/null || echo cinnamon)
-if [ "$EFFECTIVE" = "none" ]; then
-    echo "sem desktop instalado; rode o setup e escolha uma sessao grafica"
-    exit 1
-fi
 
 termux-wake-lock 2>/dev/null || true
 pgrep -f "sshd" >/dev/null || setsid sshd
 
-if ! pgrep -f "[X]vnc :$DISP" >/dev/null; then
-    rm -f "$TMPDIR/.X$DISP-lock" "$TMPDIR/.X11-unix/X$DISP" "$HOME/.vnc/"*:"$DISP".pid 2>/dev/null || true
+if ! pgrep -f "[X]vnc :1" >/dev/null; then
+    rm -f "$TMPDIR/.X1-lock" "$TMPDIR/.X11-unix/X1" "$HOME/.vnc/"*:1.pid 2>/dev/null || true
 fi
 
-vncserver :"$DISP" -geometry __GEOMETRY__ -depth 24 -localhost no -SecurityTypes VncAuth 2>/dev/null
+vncserver :1 -geometry __GEOMETRY__ -depth 24 -localhost no -SecurityTypes VncAuth 2>/dev/null
 sleep 2
 
-for _ in 1 2 3 4 5; do
-    DISPLAY=:"$DISP" xfconf-query -c xsettings -p /Xft/Antialias >/dev/null 2>&1 && break
-    sleep 1
-done
-
-TLS=0
-if [ -x "$HOME/.dextermux/tls.sh" ]; then
-    TLS=$(cat "$DIR/tls/mode" 2>/dev/null || echo 0)
-    if [ "$TLS" = "1" ]; then
-        "$HOME/.dextermux/tls.sh" ensure >/dev/null 2>&1 || true
-    fi
+TLS=$(cat "$DIR/tls/mode" 2>/dev/null || echo 0)
+if [ "$TLS" = "1" ] && [ -x "$DIR/tls.sh" ]; then
+    "$DIR/tls.sh" ensure >/dev/null 2>&1 || true
 fi
 
 WS_ARGS=""
@@ -790,7 +315,6 @@ if [ "$TLS" = "1" ] && [ -s "$DIR/tls/server.crt" ]; then
     WANT_TLS=1
 fi
 
-# reinicia o websockify se o modo TLS mudou
 WS_PID=$(pgrep -f "[w]ebsockify.*$PORT" | head -1 || true)
 if [ -n "$WS_PID" ]; then
     WS_CMD=$(tr '\0' ' ' <"/proc/$WS_PID/cmdline" 2>/dev/null || echo "")
@@ -812,7 +336,7 @@ if [ -z "$WS_PID" ]; then
 fi
 sleep 2
 
-# reinicia o cloudflared se a origem TLS mudou
+TUNNEL=$(cat "$DIR/tunnel" 2>/dev/null || echo 0)
 CF_PID=$(pgrep -f "[c]loudflared tunnel" | head -1 || true)
 if [ -n "$CF_PID" ]; then
     CF_CMD=$(tr '\0' ' ' <"/proc/$CF_PID/cmdline" 2>/dev/null || echo "")
@@ -820,16 +344,15 @@ if [ -n "$CF_PID" ]; then
     case "$CF_CMD" in
         *https://localhost:6080*) CF_TLS=1 ;;
     esac
-    if [ "$CF_TLS" != "$WANT_TLS" ]; then
-        echo "reiniciando cloudflared no modo TLS=$WANT_TLS"
+    if [ "$TUNNEL" != "1" ] || [ "$CF_TLS" != "$WANT_TLS" ]; then
         kill "$CF_PID" 2>/dev/null || true
         sleep 1
+        CF_PID=""
     fi
 fi
 
-# shellcheck disable=SC2050
-if [ "$DISP" = "1" ] && [ "__TUNNEL__" = "1" ] && ! pgrep -f "[c]loudflared tunnel" >/dev/null; then
-    if [ "$TLS" = "1" ] && [ -s "$DIR/tls/server.crt" ]; then
+if [ "$TUNNEL" = "1" ] && [ -z "$CF_PID" ]; then
+    if [ "$WANT_TLS" = "1" ]; then
         setsid cloudflared tunnel --url https://localhost:6080 --no-tls-verify --no-autoupdate >"$TMPDIR/cf.log" 2>&1 </dev/null &
     else
         setsid cloudflared tunnel --url http://localhost:6080 --no-autoupdate >"$TMPDIR/cf.log" 2>&1 </dev/null &
@@ -838,9 +361,13 @@ if [ "$DISP" = "1" ] && [ "__TUNNEL__" = "1" ] && ! pgrep -f "[c]loudflared tunn
     grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" "$TMPDIR/cf.log" | tail -1 >"$HOME/tunnel-url.txt"
 fi
 
-echo "VNC $VNCPORT | noVNC $PORT | sessao: $(cat "$DIR/session.$DISP" 2>/dev/null || cat "$DIR/session" 2>/dev/null || echo cinnamon)"
+if [ "$TUNNEL" = "1" ]; then
+    echo "VNC $VNCPORT | noVNC $PORT | tunel: $(cat "$HOME/tunnel-url.txt" 2>/dev/null || echo abrindo)"
+else
+    echo "VNC $VNCPORT | noVNC $PORT | tunel: desligado"
+fi
 EOF
-    sed -i "s/__GEOMETRY__/$GEOMETRY/g; s/__TUNNEL__/$TUNNEL/g" "$H/start-desktop.sh"
+    sed -i "s/__GEOMETRY__/$GEOMETRY/g" "$H/start-desktop.sh"
     chmod +x "$H/start-desktop.sh"
     ln -sf "$H/start-desktop.sh" "$P/bin/desktop"
 }
@@ -848,36 +375,31 @@ EOF
 write_show_access() {
     cat >"$H/show-access.sh" <<'EOF'
 #!/data/data/com.termux/files/usr/bin/sh
-# Gerado por dextermux. Mostra IP, portas, sessao e estado dos servicos.
+# Gerado por dextermux. Mostra IP, portas, TLS, tunel e estado dos servicos.
 IP=$(ifconfig 2>/dev/null | sed -n '/^wlan0/,/^$/s/.*inet \([0-9.]*\).*/\1/p' | head -1)
 [ -z "$IP" ] && IP="IP-DO-CELULAR"
-SESSION=$(cat "$HOME/.dextermux/session" 2>/dev/null || echo cinnamon)
-if [ "$SESSION" = "ubuntu" ]; then SESSION=xfce; fi
+TLS=$(cat "$HOME/.dextermux/tls/mode" 2>/dev/null || echo 0)
+if [ "$TLS" = "1" ]; then SCHEME=https; else SCHEME=http; fi
 
 echo ""
 echo "=== Acesso remoto ==="
-echo "Sessao:       $SESSION"
+echo "Desktop:      XFCE4"
 if pgrep -f "[X]vnc :1" >/dev/null; then
     echo "VNC local:    vnc://$IP:5901"
 else
-    echo "VNC:          iniciando/parado (rode: desktop)"
+    echo "VNC:          parado (rode: desktop)"
 fi
-TLS=$(cat "$HOME/.dextermux/tls/mode" 2>/dev/null || echo 0)
-if [ "$TLS" = "1" ]; then SCHEME=https; else SCHEME=http; fi
 if pgrep -f "[w]ebsockify" >/dev/null; then
     echo "noVNC local:  $SCHEME://$IP:6080/vnc.html"
 else
-    echo "noVNC:        iniciando/parado (rode: desktop)"
+    echo "noVNC:        parado (rode: desktop)"
 fi
 U=$(grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" "$TMPDIR/cf.log" 2>/dev/null | tail -1)
 [ -z "$U" ] && U=$(cat "$HOME/tunnel-url.txt" 2>/dev/null)
 if pgrep -f "[c]loudflared tunnel" >/dev/null; then
     echo "Publico:      ${U:-abrindo...}/vnc.html"
 else
-    echo "Publico:      ${U:+ultimo: }${U:-indisponivel} (rode: desktop)"
-fi
-if pgrep -f "[X]vnc :2" >/dev/null; then
-    echo "Teste :2      $SCHEME://$IP:6081/vnc.html"
+    echo "Publico:      desligado (rode: desktop com --tunnel)"
 fi
 echo "======================"
 echo ""
@@ -916,6 +438,12 @@ enabled() {
     [ "$(cat "$MODE" 2>/dev/null || echo 0)" = "1" ]
 }
 
+stop_services() {
+    pkill -f "[w]ebsockify" 2>/dev/null || true
+    pkill -f "[c]loudflared tunnel" 2>/dev/null || true
+    sleep 1
+}
+
 generate() {
     if ! command -v openssl >/dev/null 2>&1; then
         echo "openssl ausente; instale openssl-tool" >&2
@@ -949,12 +477,6 @@ ensure() {
         echo "certificado expira em menos de 30 dias; renovando"
         generate
     fi
-}
-
-stop_services() {
-    pkill -f "[w]ebsockify" 2>/dev/null || true
-    pkill -f "[c]loudflared tunnel" 2>/dev/null || true
-    sleep 1
 }
 
 show() {
@@ -1002,169 +524,60 @@ EOF
     printf '%s\n' "$TLS" >"$H/.dextermux/tls/mode"
 }
 
-write_session_manager() {
+write_status_helper() {
     mkdir -p "$H/.dextermux"
-    cat >"$H/.dextermux/session-manager.sh" <<'EOF'
+    cat >"$H/.dextermux/status.sh" <<'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-# Gerado por dextermux. Alterna, testa e remove sessoes graficas.
+# Gerado por dextermux. Estado do ambiente e contagem de processos.
 set -eu
-DIR="$HOME/.dextermux"
-FILE="$DIR/session"
-mkdir -p "$DIR"
+H="$HOME"
 
-usage() {
-    cat <<TXT
-uso: dextermux-session [comando]
-
-  (vazio)            mostra a sessao atual, as instaladas e os displays ativos
-  list               lista sessoes com estado
-  set NOME           define a sessao padrao e reinicia o VNC
-  try NOME [DISPLAY] sobe a sessao no display indicado (padrao 2)
-  stop [DISPLAY]     encerra o display de teste (padrao 2)
-  remove NOME        remove os pacotes exclusivos da sessao
-TXT
+count() {
+    local n
+    n=$(ps -u "$(id -u)" -o pid= 2>/dev/null | wc -l | tr -d ' ')
+    if [ -z "$n" ] || [ "$n" = "0" ]; then
+        n=0
+        for d in /proc/[0-9]*; do
+            if [ -d "$d" ] && [ -O "$d" ]; then n=$((n + 1)); fi
+        done
+    fi
+    printf '%s\n' "${n:-0}"
 }
 
-have() { command -v "$1" >/dev/null 2>&1; }
-installed() {
-    case "$1" in
-        xfce|ubuntu) have startxfce4 ;;
-        cinnamon) have cinnamon-session ;;
-        mate) have mate-session ;;
-        *) return 1 ;;
-    esac
-}
-current() {
-    local s
-    s=$(cat "$FILE" 2>/dev/null || echo cinnamon)
-    if [ "$s" = "ubuntu" ]; then s=xfce; fi
-    printf '%s\n' "$s"
-}
-
-list_sessions() {
-    local s
-    for s in cinnamon xfce mate; do
-        if installed "$s"; then
-            if [ "$s" = "$(current)" ]; then
-                printf '  %-10s instalada  padrao\n' "$s"
-            else
-                printf '  %-10s instalada\n' "$s"
-            fi
-        else
-            printf '  %-10s ausente\n' "$s"
-        fi
-    done
-}
-
-running_displays() {
-    local d found=0
-    for d in 1 2 3 4 5 6; do
-        if pgrep -f "[X]vnc :$d" >/dev/null; then
-            found=1
-            printf '  :%-2s VNC %-5s noVNC %-5s sessao %s\n' \
-                "$d" "$((5900 + d))" "$((6080 + d - 1))" \
-                "$(cat "$DIR/running.$d" 2>/dev/null || echo "?")"
-        fi
-    done
-    if [ "$found" = "0" ]; then
-        printf '  nenhum display ativo\n'
+verdict() {
+    if [ "$1" -ge 30 ]; then
+        printf 'critico'
+    elif [ "$1" -ge 24 ]; then
+        printf 'atencao'
+    else
+        printf 'ok'
     fi
 }
 
-restart_vnc() {
-    vncserver -kill :1 >/dev/null 2>&1 || true
-    sleep 1
-    rm -f "$TMPDIR/.X1-lock" "$TMPDIR/.X11-unix/X1" "$HOME/.vnc/"*:1.pid 2>/dev/null || true
-    "$HOME/start-desktop.sh" 1
-}
+N=$(count)
+TLS=$(cat "$H/.dextermux/tls/mode" 2>/dev/null || echo 0)
+TUNNEL=$(cat "$H/.dextermux/tunnel" 2>/dev/null || echo 0)
 
-cmd="${1:-}"
-case "$cmd" in
-    ""|status)
-        echo ""
-        echo "Sessao padrao: $(current)"
-        list_sessions
-        echo ""
-        echo "Displays ativos:"
-        running_displays
-        echo ""
-        ;;
-    list)
-        list_sessions
-        ;;
-    set)
-        name="${2:-}"
-        installed "$name" || { echo "sessao nao instalada: $name" >&2; exit 1; }
-        if [ "$name" = "ubuntu" ]; then name=xfce; fi
-        echo "$name" >"$FILE"
-        rm -f "$DIR/session.1"
-        echo "sessao padrao: $name"
-        restart_vnc
-        ;;
-    try)
-        name="${2:-}"
-        disp="${3:-2}"
-        if [ "$name" = "ubuntu" ]; then name=xfce; fi
-        installed "$name" || { echo "sessao nao instalada: $name" >&2; exit 1; }
-        case "$disp" in
-            ""|*[!0-9]*) echo "display invalido: $disp" >&2; exit 1 ;;
-        esac
-        "$HOME/start-desktop.sh" "$disp" "$name"
-        echo ""
-        echo "Sessao $name no display :$disp"
-        echo "noVNC: http://<ip>:$((6080 + disp - 1))/vnc.html"
-        echo "VNC:   <ip>:$((5900 + disp))"
-        ;;
-    stop)
-        disp="${2:-2}"
-        case "$disp" in
-            ""|*[!0-9]*) disp=2 ;;
-        esac
-        vncserver -kill ":$disp" >/dev/null 2>&1 || true
-        pkill -f "[w]ebsockify.*$((6080 + disp - 1))" 2>/dev/null || true
-        rm -f "$DIR/session.$disp" "$DIR/running.$disp"
-        echo "display :$disp encerrado"
-        ;;
-    remove)
-        name="${2:-}"
-        case "$name" in
-            xfce) pkgs="xfce4 xfdesktop xfce4-panel xfce4-session xfce4-settings xfce4-terminal xfwm4 xfconf thunar" ;;
-            cinnamon) pkgs="cinnamon cinnamon-session cinnamon-settings-daemon cinnamon-control-center cinnamon-desktop cinnamon-menus muffin cjs nemo mint-themes mint-y-icon-theme" ;;
-            mate) pkgs="mate mate-session-manager mate-panel mate-settings-daemon mate-control-center mate-terminal marco caja pluma mate-applet-brisk-menu mate-tweak mate-menus mate-desktop mate-utils mate-media mate-power-manager mate-screensaver mate-notification-daemon mate-themes mate-icon-theme" ;;
-            *) echo "remocao suportada para xfce, cinnamon e mate" >&2; exit 1 ;;
-        esac
-        if [ "$name" = "ubuntu" ]; then name=xfce; fi
-        if [ "$(current)" = "$name" ]; then
-            echo "sessao ativa; trocando para cinnamon antes de remover"
-            echo cinnamon >"$FILE"
-            restart_vnc
-        fi
-        echo "pacotes a remover: $pkgs"
-        printf 'confirmar remocao? [s/N] '
-        read -r a || a=""
-        case "$a" in
-            s|S) ;;
-            *) echo "cancelado"; exit 0 ;;
-        esac
-        for p in $pkgs; do
-            dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "install ok installed" || continue
-            pkg uninstall -y "$p" || true
-        done
-        pkg autoremove -y || true
-        echo "concluido; rode 'pkg clean' para liberar o cache"
-        ;;
-    -h|--help|help)
-        usage
-        ;;
-    *)
-        echo "comando invalido: $cmd" >&2
-        usage
-        exit 1
-        ;;
-esac
+echo ""
+echo "=== dextermux ==="
+echo "Desktop:    XFCE4"
+if [ "$TLS" = "1" ]; then echo "TLS:        https"; else echo "TLS:        http"; fi
+if [ "$TUNNEL" = "1" ]; then echo "Tunel:      ligado"; else echo "Tunel:      desligado"; fi
+if pgrep -f "[X]vnc :1" >/dev/null; then echo "VNC:        ativo"; else echo "VNC:        parado"; fi
+if pgrep -f "[w]ebsockify" >/dev/null; then echo "noVNC:      ativo"; else echo "noVNC:      parado"; fi
+echo "Processos:  $N / limite Android 32 ($(verdict "$N"))"
+echo ""
+echo "Top 5 por memoria:"
+ps -u "$(id -u)" -o pid,rss,comm --sort=-rss 2>/dev/null | head -6 || true
+echo ""
+echo "Para elevar o limite (via PC com ADB):"
+echo "  adb shell settings put global settings_enable_monitor_phantom_procs false"
+echo "  adb shell device_config put activity_manager max_phantom_processes 2147483647"
+echo "=================="
+echo ""
 EOF
-    chmod +x "$H/.dextermux/session-manager.sh"
-    ln -sf "$H/.dextermux/session-manager.sh" "$P/bin/dextermux-session"
+    chmod +x "$H/.dextermux/status.sh"
+    ln -sf "$H/.dextermux/status.sh" "$P/bin/dextermux-status"
 }
 
 write_bashrc_block() {
@@ -1173,7 +586,6 @@ write_bashrc_block() {
     sed -i '/show-access.sh/d; /start-desktop.sh >\/dev\/null 2>&1/d' "$H/.bashrc"
     cat >>"$H/.bashrc" <<'EOF'
 # dextermux-start
-if ! pgrep -f "[X]vnc :1" >/dev/null 2>&1; then setsid "$HOME/start-desktop.sh" >/dev/null 2>&1 & fi
 [ -f $HOME/show-access.sh ] && . $HOME/show-access.sh
 # dextermux-end
 EOF
@@ -1231,15 +643,10 @@ write_novnc() {
     ok "noVNC $NOVNC_VER instalado"
 }
 
-write_session_default() {
-    mkdir -p "$H/.dextermux"
-    if [ "$DESKTOP" = "all" ]; then
-        printf 'cinnamon\n' >"$H/.dextermux/session"
-    elif [ "$DESKTOP" = "none" ]; then
-        printf 'none\n' >"$H/.dextermux/session"
-    else
-        printf '%s\n' "$DESKTOP" >"$H/.dextermux/session"
-    fi
+write_modes() {
+    mkdir -p "$H/.dextermux/tls"
+    printf '%s\n' "$TLS" >"$H/.dextermux/tls/mode"
+    printf '%s\n' "$TUNNEL" >"$H/.dextermux/tunnel"
 }
 
 # ---------------------------------------------------------------- instalacao
@@ -1260,57 +667,16 @@ run_packages() {
     # shellcheck disable=SC2086
     install_pkgs $PKGS_BASE
 
-    step "Sessao grafica"
-    case "$DESKTOP" in
-        cinnamon)
-            # shellcheck disable=SC2086
-            install_pkgs $PKGS_CINNAMON
-            ;;
-        xfce)
-            # shellcheck disable=SC2086
-            install_pkgs $PKGS_XFCE
-            ;;
-        mate)
-            # shellcheck disable=SC2086
-            install_pkgs $PKGS_MATE
-            ;;
-        all)
-            # shellcheck disable=SC2086
-            install_pkgs $PKGS_CINNAMON
-            # shellcheck disable=SC2086
-            install_pkgs $PKGS_XFCE
-            # shellcheck disable=SC2086
-            install_pkgs $PKGS_MATE
-            ;;
-        none)
-            info "nenhuma sessao grafica sera instalada"
-            ;;
-    esac
-}
-
-run_dev() {
-    step "Ferramentas de desenvolvimento"
-    if [ -z "$DEV_GROUPS" ]; then
-        info "nenhum grupo selecionado"
-        return 0
-    fi
-    local pkgs g
-    for g in $DEV_GROUPS; do
-        pkgs=$(dev_pkg_list "$g")
-        if [ -z "$pkgs" ]; then
-            continue
-        fi
-        info "grupo $g"
-        # shellcheck disable=SC2086
-        install_pkgs $pkgs
-    done
+    step "XFCE4 minimo"
+    # shellcheck disable=SC2086
+    install_pkgs $PKGS_XFCE
 }
 
 run_install() {
     mkdir -p "$H/.dextermux"
     : >"$LOG"
     printf 'dextermux %s - %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
-    printf 'desktop=%s dev=%s tunnel=%s geometry=%s\n' "$DESKTOP" "$DEV_GROUPS" "$TUNNEL" "$GEOMETRY" >>"$LOG"
+    printf 'tunnel=%s tls=%s geometry=%s\n' "$TUNNEL" "$TLS" "$GEOMETRY" >>"$LOG"
 
     run_packages
 
@@ -1330,17 +696,15 @@ run_install() {
     step "Senha do VNC"
     write_vnc_password
 
-    step "Configuracoes da sessao"
-    write_session_default
+    step "Configuracoes"
+    write_modes
     write_xstartup
 
     step "Scripts de operacao"
     write_start_desktop
     write_show_access
-    write_session_manager
     write_tls_helper
-
-    run_dev
+    write_status_helper
 
     step "Banner do shell"
     write_bashrc_block
@@ -1352,19 +716,14 @@ run_install() {
     write_ssh_key
 
     step "Certificado TLS"
-    if [ "$TLS" = "1" ] && [ "$DESKTOP" != "none" ]; then
+    if [ "$TLS" = "1" ]; then
         "$H/.dextermux/tls.sh" ensure || warn "falha ao gerar o certificado; a LAN seguira em HTTP"
     else
         info "HTTPS na LAN desligado"
     fi
 
     step "Subindo servicos"
-    if [ "$DESKTOP" = "none" ]; then
-        setsid sshd >/dev/null 2>&1 || true
-        ok "sshd iniciado (sem desktop)"
-    else
-        "$H/start-desktop.sh" 2>&1 | tee -a "$LOG" || warn "servicos iniciaram com avisos; veja $LOG"
-    fi
+    "$H/start-desktop.sh" 2>&1 | tee -a "$LOG" || warn "servicos iniciaram com avisos; veja $LOG"
 
     step "Limpando cache"
     pkg clean >/dev/null 2>&1 || true
@@ -1372,75 +731,66 @@ run_install() {
 }
 
 repair_only() {
-    TOTAL_STEPS=7
+    TOTAL_STEPS=8
     : >"$LOG"
     printf 'dextermux %s - reparo %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
-    step "Configuracoes da sessao"
-    write_session_default
+    step "Configuracoes"
+    write_modes
     write_xstartup
     step "Scripts de operacao"
     write_start_desktop
     write_show_access
-    write_session_manager
     write_tls_helper
-    step "Certificado TLS"
-    if [ "$TLS" = "1" ] && [ "$DESKTOP" != "none" ]; then
-        "$H/.dextermux/tls.sh" ensure || warn "falha ao gerar o certificado"
-    fi
+    write_status_helper
     step "Banner do shell"
     write_bashrc_block
     step "Autostart no boot"
     write_boot_script
+    step "Certificado TLS"
+    if [ "$TLS" = "1" ]; then
+        "$H/.dextermux/tls.sh" ensure || warn "falha ao gerar o certificado"
+    fi
     step "Reiniciando servicos"
     vncserver -kill :1 >/dev/null 2>&1 || true
+    pkill -f "[w]ebsockify" 2>/dev/null || true
+    pkill -f "[c]loudflared tunnel" 2>/dev/null || true
     sleep 1
     rm -f "$TMPDIR/.X1-lock" "$TMPDIR/.X11-unix/X1" "$H/.vnc/"*:1.pid 2>/dev/null || true
     "$H/start-desktop.sh" 2>&1 | tee -a "$LOG" || warn "servicos iniciaram com avisos"
+    step "Verificacao"
+    local n
+    n=$(process_count)
+    row "Processos" "$n ($(process_verdict "$n"))"
 }
 
 # ---------------------------------------------------------------- resumo
 
 print_summary() {
-    local ip session public
+    local ip public scheme count verdict
     ip=$(ifconfig 2>/dev/null | sed -n '/^wlan0/,/^$/s/.*inet \([0-9.]*\).*/\1/p' | head -1)
     [ -z "$ip" ] && ip="<ip>"
-    session=$(current_session)
-    public=$(cat "$H/tunnel-url.txt" 2>/dev/null || echo "indisponivel")
+    public=$(cat "$H/tunnel-url.txt" 2>/dev/null || echo "desligado")
+    if [ "$TLS" = "1" ]; then scheme=https; else scheme=http; fi
+    count=$(process_count)
+    verdict=$(process_verdict "$count")
 
     section "Resumo"
     row "Usuario" "$(whoami)"
-    if [ "$session" = "none" ]; then
-        row "Sessao" "sem desktop"
-        row "SSH" "ssh -p 8022 $(whoami)@$ip"
-        row "Log" "$LOG"
-    else
-        row "Sessao" "$session"
-        row "VNC local" "vnc://$ip:5901"
-        if [ "$TLS" = "1" ]; then
-            row "noVNC local" "https://$ip:6080/vnc.html"
-            row "Certificado" "$H/.dextermux/tls/server.crt"
-        else
-            row "noVNC local" "http://$ip:6080/vnc.html"
-        fi
-        row "Tunel publico" "$public"
-        row "Senha VNC" "${VNC_PASS:-(a existente em ~/.vnc/passwd)}"
-        row "Log" "$LOG"
-    fi
+    row "Desktop" "XFCE4"
+    row "VNC local" "vnc://$ip:5901"
+    row "noVNC local" "$scheme://$ip:6080/vnc.html"
+    row "Tunel publico" "$public"
+    row "Senha VNC" "${VNC_PASS:-(a existente em ~/.vnc/passwd)}"
+    row "Certificado" "$H/.dextermux/tls/server.crt"
+    row "Processos" "$count / 32 ($verdict)"
+    row "Log" "$LOG"
 
     section "Comandos"
-    printf '  %-22s %s\n' "desktop" "sobe sshd, Xvnc, websockify e cloudflared"
+    printf '  %-22s %s\n' "desktop" "sobe sshd, Xvnc, websockify e o tunel (se ligado)"
     printf '  %-22s %s\n' "url" "mostra IP, portas e estado"
-    printf '  %-22s %s\n' "dextermux-session" "lista e troca a sessao grafica"
-    printf '  %-22s %s\n' "dextermux-tls show" "mostra o certificado e as SANs"
-    printf '  %-22s %s\n' "dextermux-tls renew" "regenera o certificado da LAN"
-    printf '  %-22s %s\n' "dextermux-session try X" "testa uma sessao em paralelo na porta 6081"
-    printf '  %-22s %s\n' "dextermux-session remove X" "remove pacotes de xfce, cinnamon ou mate"
-
-    if [ -f "$H/.dextermux/theme.sh" ]; then
-        section "Restos do preset antigo"
-        printf '  O preset restilizado foi removido do script. Para limpar o aparelho,\n'
-        printf '  veja a secao "Limpeza do preset antigo" no README.\n'
-    fi
+    printf '  %-22s %s\n' "dextermux-status" "processos, top 5, TLS e tunel"
+    printf '  %-22s %s\n' "dextermux-tls show" "certificado e SANs"
+    printf '  %-22s %s\n' "dextermux-tls renew" "regenera o certificado"
 
     section "Pendencias manuais"
     printf '  1. Instalar o app Termux:Boot (F-Droid/GitHub) e abrir uma vez.\n'
@@ -1452,61 +802,36 @@ print_summary() {
     if [ "$TLS" = "1" ]; then
         printf '  5. No primeiro acesso https, aceite o certificado autoassinado no navegador.\n'
     fi
-    printf '  6. O tunel publico expoe o noVNC na internet; use senha forte.\n'
+    printf '  6. Android 12+ mata o app acima de 32 processos (phantom process killer).\n'
+    printf '     Use dextermux-status para medir; os comandos ADB estao no README.\n'
+    if [ "$TUNNEL" = "1" ]; then
+        printf '  7. O tunel publico expoe o noVNC na internet; use senha forte.\n'
+    fi
     rule
-}
-
-print_list() {
-    section "Presets de desktop"
-    printf '  %-34s %7s MB\n' "cinnamon  (padrao)" "$SIZE_CINNAMON"
-    printf '  %-34s %7s MB\n' "xfce  (visual padrao)" "$SIZE_XFCE"
-    printf '  %-34s %7s MB\n' "mate" "$SIZE_MATE"
-    printf '  %-34s %7s MB\n' "all  (as tres)" "$SIZE_ALL"
-    printf '  %-34s %7s MB\n' "none  (so servidor)" "$SIZE_NONE"
-    section "Perfis de desenvolvimento"
-    printf '  %-34s %7s MB\n' "core" "$SIZE_DEV_CORE"
-    printf '  %-34s %7s MB\n' "web" "$SIZE_DEV_WEB"
-    printf '  %-34s %7s MB\n' "rust" "$SIZE_DEV_RUST"
-    printf '  %-34s %7s MB\n' "go" "$SIZE_DEV_GO"
-    printf '  %-34s %7s MB\n' "java" "$SIZE_DEV_JAVA"
-    printf '  %-34s %7s MB\n' "db" "$SIZE_DEV_DB"
-    printf '  %-34s %7s MB\n' "browser" "$SIZE_DEV_BROWSER"
-    printf '\n  Tamanhos incluem dependencias e a base remota (VNC, noVNC, tunel).\n\n'
 }
 
 print_dry_run() {
     section "Plano (dry-run)"
-    row "Desktop" "$DESKTOP"
-    row "Dev" "${DEV_GROUPS:-nenhum}"
+    row "Desktop" "XFCE4 minimo"
     row "Tunel" "$([ "$TUNNEL" = "1" ] && echo ligado || echo desligado)"
     row "HTTPS LAN" "$([ "$TLS" = "1" ] && echo autoassinado || echo desligado)"
     row "Geometria" "$GEOMETRY"
-    row "Estimativa" "~$(estimated_total_mb) MB"
     printf '\n  Pacotes base: %s\n' "$PKGS_BASE"
-    case "$DESKTOP" in
-        xfce) printf '  Pacotes desktop: %s\n' "$PKGS_XFCE" ;;
-        cinnamon) printf '  Pacotes desktop: %s\n' "$PKGS_CINNAMON" ;;
-        mate) printf '  Pacotes desktop: %s\n' "$PKGS_MATE" ;;
-        all) printf '  Pacotes desktop: %s %s %s\n' "$PKGS_CINNAMON" "$PKGS_XFCE" "$PKGS_MATE" ;;
-        *) printf '  Pacotes desktop: nenhum\n' ;;
-    esac
-    if [ -n "$DEV_GROUPS" ]; then
-        printf '  Pacotes dev: %s\n' "$(dev_pkg_list "$DEV_GROUPS")"
-    fi
+    printf '  Pacotes xfce: %s\n' "$PKGS_XFCE"
     printf '\n  Arquivos que seriam gravados:\n'
     printf '    ~/.vnc/xstartup\n    ~/.vnc/passwd\n    ~/start-desktop.sh\n'
-    printf '    ~/show-access.sh\n    ~/.dextermux/session\n    ~/.dextermux/session-manager.sh\n'
-    printf '    ~/.dextermux/tls.sh\n    ~/.dextermux/tls/{server.crt,server.key,mode}\n'
-    printf '    ~/.termux/boot/start-services.sh\n    ~/.bashrc (bloco dextermux)\n\n'
+    printf '    ~/show-access.sh\n    ~/.dextermux/tls.sh\n    ~/.dextermux/status.sh\n'
+    printf '    ~/.dextermux/tunnel\n    ~/.dextermux/tls/{server.crt,server.key,mode}\n'
+    printf '    ~/.termux/boot/start-services.sh\n    ~/.bashrc (bloco dextermux, banner)\n\n'
 }
+
+# ---------------------------------------------------------------- main
 
 parse_args() {
     while [ $# -gt 0 ]; do
         case "$1" in
-            -y|--yes) INTERACTIVE=0 ;;
-            --non-interactive) INTERACTIVE=0 ;;
-            --desktop=*) DESKTOP="${1#*=}" ;;
-            --dev=*) DEV_GROUPS=$(printf '%s' "${1#*=}" | tr ',' ' ') ;;
+            -y|--yes) : ;;
+            --desktop=*|--dev=*) : ;;
             --geometry=*) GEOMETRY="${1#*=}" ;;
             --password=*) VNC_PASS="${1#*=}" ;;
             --ssh-pubkey=*) SSH_PUBKEY="${1#*=}" ;;
@@ -1516,37 +841,23 @@ parse_args() {
             --no-tls) TLS=0 ;;
             --repair) MODE="repair" ;;
             --dry-run) DRY_RUN=1 ;;
-            --list) print_list; exit 0 ;;
             -h|--help) usage; exit 0 ;;
             --version) printf '%s\n' "$DEXTERMUX_VERSION"; exit 0 ;;
             *) die "flag desconhecida: $1 (use --help)" ;;
         esac
         shift
     done
-    if [ "$DESKTOP" = "ubuntu" ]; then DESKTOP="xfce"; fi
-    case "$DESKTOP" in
-        xfce|cinnamon|mate|all|none) ;;
-        *) die "desktop invalido: $DESKTOP (cinnamon|xfce|mate|all|none)" ;;
-    esac
-    DEV_GROUPS=$(printf '%s' "$DEV_GROUPS" | tr ',' ' ')
-    if [ "$DEV_GROUPS" = "none" ]; then
-        DEV_GROUPS=""
-    fi
 }
 
 main() {
     parse_args "$@"
-    if [ "$DRY_RUN" = "0" ]; then
-        open_tty
-    fi
 
-    if [ ! -d /data/data/com.termux/files/usr ]; then
-        if [ "$DRY_RUN" = "0" ]; then
-            die "rode este script dentro do Termux"
-        fi
+    if [ ! -d /data/data/com.termux/files/usr ] && [ "$DRY_RUN" = "0" ]; then
+        die "rode este script dentro do Termux"
     fi
 
     detect_resources
+    print_resources
 
     if [ "$DRY_RUN" = "1" ]; then
         print_dry_run
@@ -1554,32 +865,9 @@ main() {
     fi
 
     if [ "$MODE" = "repair" ]; then
-        DESKTOP=$(current_session)
-        if [ "$DESKTOP" = "none" ]; then
-            DESKTOP="cinnamon"
-        fi
         repair_only
         print_summary
         exit 0
-    fi
-
-    if [ "$INTERACTIVE" = "1" ]; then
-        screen_resources
-        while true; do
-            screen_desktop
-            if [ "$DESKTOP" != "none" ]; then
-                screen_dev
-            else
-                DEV_GROUPS=""
-            fi
-            screen_remote
-            if screen_confirm; then
-                break
-            fi
-        done
-    else
-        banner
-        info "modo automatico: desktop=$DESKTOP dev=${DEV_GROUPS:-nenhum} tunel=$TUNNEL"
     fi
 
     run_install

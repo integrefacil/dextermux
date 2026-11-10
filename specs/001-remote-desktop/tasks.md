@@ -117,3 +117,15 @@
 
 - Toda tarefa concluida foi validada no dispositivo real (Termux aarch64, Android 15).
 - Nao reintroduzir `xrdp` sem antes confirmar correcao do pacote (ver `research.md` item 4).
+
+## Phase 11: Foco em XFCE4 e teto de processos (v3.0.0)
+
+- [x] T061 Remover Cinnamon, MATE, presets `all`/`none` e `dextermux-session`
+- [x] T062 Remover todos os menus e leituras interativas (`read`, `/dev/tty`)
+- [x] T063 Instalar XFCE minimo (sem `xfce4-notifyd` e `xfce4-power-manager`)
+- [x] T064 Desligar o tunel por padrao (`--tunnel` para ligar)
+- [x] T065 `.bashrc` apenas com banner, sem autostart de servicos
+- [x] T066 `dextermux-status` com contagem de processos, top 5 e comandos ADB
+- [x] T067 Avisos em 24 processos e critico em 30, sem bloquear instalacao
+- [x] T068 Atualizar README, quickstart, contrato, spec, plano, research e constitution 2.0.0
+- [ ] T069 Validar no aparelho: `curl -k https://<ip>:6080/vnc.html` e `dextermux-status` abaixo de 24
