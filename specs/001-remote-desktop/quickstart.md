@@ -2,104 +2,96 @@
 
 ## 1. Instalar
 
-No Termux do celular:
-
 ```bash
 curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash
 ```
 
-O instalador mostra os recursos do aparelho, abre os menus e so instala depois da confirmacao.
-
-Sem gravar arquivo:
+Com senha e chave SSH:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/<user>/<repo>/main/setup.sh)
+curl -fsSL https://integrefacil.github.io/dextermux/setup.sh \
+  | VNC_PASS=MinhaSen SSH_PUBKEY="ssh-ed25519 AAAA... usuario@pc" bash
 ```
 
-Pipe direto (interativo se houver terminal, automatico sem terminal):
+Com tunel publico:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<user>/<repo>/main/setup.sh | bash
-curl -fsSL https://raw.githubusercontent.com/<user>/<repo>/main/setup.sh \
-  | VNC_PASS=MinhaSen bash -s -- --desktop=cinnamon --dev=core,web --no-tunnel
+curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash -s -- --tunnel
 ```
 
-Conferir o plano antes de instalar:
+Conferir o plano sem instalar:
 
 ```bash
-bash setup.sh --dry-run --desktop=all --dev=core,web
-bash setup.sh --list
+bash setup.sh --dry-run
 ```
 
-## 2. Escolher a sessao grafica
+O instalador nao pergunta nada. Ele imprime os recursos do aparelho, instala, sobe os servicos e
+mostra o resumo.
 
-| Opcao | O que e | Disco |
-|-------|---------|-------|
-| `cinnamon` | Sessao do Linux Mint (padrao) | ~1691 MB |
-| `xfce` | XFCE4 padrao, sem restilizacao | ~739 MB |
-| `mate` | Visual classico do Ubuntu (experimental) | ~1345 MB |
-| `all` | As tres, para comparar | ~2224 MB |
-| `none` | Sem desktop, so sshd e ferramentas | ~260 MB |
-
-Recomendacao para avaliar: escolha `all`, teste cada uma e depois mantenha apenas a vencedora.
-
-## 3. Conectar
+## 2. Conectar
 
 Apos abrir uma sessao nova no Termux, o banner mostra:
 
 ```text
 === Acesso remoto ===
-Sessao:       cinnamon
+Desktop:      XFCE4
 VNC local:    vnc://192.168.0.x:5901
 noVNC local:  https://192.168.0.x:6080/vnc.html
-Publico:      https://xxxx.trycloudflare.com/vnc.html
+Publico:      desligado (rode: desktop com --tunnel)
 ======================
 ```
 
 - Remmina (LAN): protocolo **VNC**, `192.168.0.x:5901`, senha do `VNC_PASS`.
-- Navegador (LAN): `https://192.168.0.x:6080/vnc.html` (aceite o certificado autoassinado no primeiro acesso).
-- Navegador (externo): URL do tunel + `/vnc.html`.
-- Para desligar o HTTPS local: `dextermux-tls disable` e `desktop`.
+- Navegador (LAN): `https://192.168.0.x:6080/vnc.html`; aceite o certificado no primeiro acesso.
+- Navegador (externo): so com `--tunnel`, na URL publica + `/vnc.html`.
+- SSH: `ssh -p 8022 <usuario>@<ip>`.
 
-## 4. Comparar sessoes
-
-```bash
-dextermux-session list          # instaladas e qual e a padrao
-dextermux-session status        # inclui os displays ativos
-dextermux-session try mate      # abre o MATE em paralelo no display :2
-dextermux-session try mate 3    # abre em outro display (:3, noVNC 6082)
-dextermux-session stop          # encerra o :2
-dextermux-session stop 3        # encerra o :3
-dextermux-session set mate      # troca a padrao e reinicia o :1
-dextermux-session remove mate   # remove os pacotes exclusivos do MATE
-```
-
-Enquanto o `:2` estiver ativo, abra `https://<ip>:6081/vnc.html` em outra aba e compare com a `6080`. Para uma terceira sessao use `dextermux-session try xfce 3` (noVNC 6082). Se o display ja estiver ativo com outra sessao, o script reinicia esse display com a sessao pedida.
-Se uma sessao experimental morrer em menos de 15 segundos, o `xstartup` cai para `xfce` e registra
-o motivo em `$TMPDIR/session.log`.
-
-## 5. Comandos do dia a dia
+## 3. Comandos
 
 | Comando | Efeito |
 |---------|--------|
-| `desktop` | sobe sshd, Xvnc, websockify e cloudflared (idempotente) |
-| `url` | imprime o banner com as URLs e o estado atual |
-| `dextermux-tls show` | mostra certificado, SANs e validade |
-| `dextermux-tls renew` | regenera o certificado da LAN |
+| `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
+| `url` | imprime o banner com IP, portas e estado |
+| `dextermux-status` | processos, top 5, TLS e tunel |
+| `dextermux-tls show` | certificado, SANs e validade |
+| `dextermux-tls renew` | regenera o certificado |
 | `dextermux-tls disable` | volta a LAN para HTTP |
-| `vncserver -kill :1` | encerra a sessao VNC principal |
-| `pkill -x cloudflared` | derruba o tunel atual |
+| `vncserver -kill :1` | encerra a sessao VNC |
 | `tail -f $TMPDIR/cf.log` | log do tunel |
 | `tail -f ~/.vnc/localhost:1.log` | log do Xvnc |
 | `tail -f ~/dextermux-install.log` | log da ultima instalacao |
 
+## 4. HTTPS na LAN
+
+O certificado e autoassinado, gerado no aparelho, com o IP da `wlan0` nas SANs.
+
+- Aceite o aviso no navegador uma vez; o noVNC conecta por `wss`.
+- Se o IP da LAN mudar: `dextermux-tls renew` e `desktop`.
+- Para eliminar o aviso, instale `~/.dextermux/tls/server.crt` como autoridade no cliente.
+- Para desligar: `dextermux-tls disable` e `desktop`.
+
+## 5. Processos e o limite de 32
+
+Android 12+ mata com `SIGKILL` os processos criados pelo app acima de 32 no total
+(phantom process killer). O ambiente fica em ~11 processos ocioso.
+
+```bash
+dextermux-status
+```
+
+- `ok` ate 23, `atencao` de 24 a 29, `critico` a partir de 30.
+- Para elevar o limite, via PC com ADB:
+  ```bash
+  adb shell settings put global settings_enable_monitor_phantom_procs false
+  adb shell device_config put activity_manager max_phantom_processes 2147483647
+  ```
+
 ## 6. Qualidade e resolucao
 
-noVNC (engrenagem):
+noVNC (engrenagem) ou parametros na URL:
 
-- **Scaling Mode**: Remote Resize (ou abra `.../vnc.html?resize=remote`).
-- **Quality**: 9.
-- **Compression**: 0 ou 1.
+- `?resize=remote` para acompanhar o tamanho da janela.
+- `?quality=7&compression=1` para reduzir banda sem borrar texto.
 
 Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 
@@ -117,16 +109,14 @@ Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 | Sintoma | Causa provavel | Acao |
 |---------|----------------|------|
 | Banner diz "parado" | Android matou os processos | `desktop` |
+| App morre com signal 9 | phantom process killer | `dextermux-status` e os comandos ADB |
 | `No supported auth types` | cliente nao negociou VncAuth | confirme `-SecurityTypes VncAuth` no `start-desktop.sh` |
 | Tela preta / VNC nao sobe | lock `.X1-lock` orfao | `rm -f $TMPDIR/.X1-lock` e `desktop` |
 | `Address already in use` na 8022 | sshd zumbi | reiniciar o Termux ou `pkill -x sshd; desktop` |
-| URL publica nao abre | tunnel caiu / URL mudou | `url` e `pkill -x cloudflared; desktop` |
-| Sessao caiu e voltou para XFCE | sessao experimental falhou | `cat $TMPDIR/session.log` |
-| Aviso de certificado no navegador | certificado autoassinado | aceite uma vez, ou instale `~/.dextermux/tls/server.crt` no cliente |
-| `wss` nao conecta | certificado nao aceito na pagina HTTPS | abra `https://<ip>:6080/vnc.html` primeiro e aceite |
+| Aviso de certificado | certificado autoassinado | aceite uma vez ou instale o cert no cliente |
+| `wss` nao conecta | certificado nao aceito na pagina | abra `https://<ip>:6080/vnc.html` primeiro |
 | IP da LAN mudou | SANs antigas | `dextermux-tls renew` e `desktop` |
-| Texto borrado | compressao alta | Quality 9 / Compression 0 no noVNC |
-| Resolucao nao acompanha | Remote Resize desligado | ativar em Scaling Mode |
+| URL publica nao abre | tunel desligado ou caiu | `desktop` com `--tunnel` |
 
 ## 9. Seguranca
 
@@ -138,6 +128,6 @@ Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 
 - `spec.md`: requisitos e criterios.
 - `plan.md`: decisoes e estrutura.
-- `research.md`: causas e workarounds de cada problema encontrado.
-- `tasks.md`: o que ja foi feito e proximos passos.
-- `contracts/cli-contract.md`: flags, variaveis, arquivos, portas e logs.
+- `research.md`: causas e workarounds.
+- `tasks.md`: o que ja foi feito.
+- `contracts/cli-contract.md`: flags, arquivos, portas e logs.

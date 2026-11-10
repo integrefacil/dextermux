@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dextermux - desktop remoto no Termux</title>
-<meta name="description" content="Desktop Linux no Termux com VNC, noVNC no navegador e tunel Cloudflare, instalado com um comando e configurado por um instalador interativo.">
+<meta name="description" content="XFCE4 remoto no Termux com VNC, noVNC por HTTPS e SSH, instalado com um comando.">
 <style>
   :root {
     --bg: #0b1020;
@@ -96,7 +96,6 @@
     <div class="brand"><span class="dot"></span> dextermux</div>
     <nav>
       <a href="#instalacao">Instalacao</a>
-      <a href="#sessoes">Sessoes</a>
       <a href="#acesso">Acesso</a>
       <a href="https://github.com/integrefacil/dextermux">GitHub</a>
       <a href="https://github.com/integrefacil/dextermux/tree/main/specs">Specs</a>
@@ -105,11 +104,11 @@
 
   <main>
     <section class="hero">
-      <div class="tag">Termux + VNC + noVNC + Cloudflare</div>
+      <div class="tag">Termux + XFCE4 + VNC + HTTPS</div>
       <h1>Seu <span>desktop Linux</span> no celular, acessivel de qualquer lugar.</h1>
       <p class="sub">
-        Mede os recursos do aparelho, deixa voce escolher a interface e as ferramentas de
-        desenvolvimento, e configura VNC, noVNC, tunel HTTPS e sshd. Sem root e sem proot.
+        Instala XFCE4 minimo, VNC, noVNC com HTTPS na LAN, sshd e tunel opcional.
+        Sem menus, sem root e sem proot.
       </p>
       <div class="install">
         <span class="prompt">$</span>
@@ -117,12 +116,11 @@
         <button class="copy" id="copy">Copiar</button>
       </div>
       <div class="grid">
-        <div class="card"><div class="icon">&#128202;</div><h3>Diagnostico antes</h3><p>Modelo, Android, nucleos, memoria, disco e rede com veredito antes de baixar qualquer pacote.</p></div>
-        <div class="card"><div class="icon">&#127912;</div><h3>Cinnamon como padrao</h3><p>Sessao completa do Linux Mint, com XFCE e MATE disponiveis para comparar.</p></div>
-        <div class="card"><div class="icon">&#128421;</div><h3>Tres sessoes</h3><p>Cinnamon, XFCE e MATE. Instale as tres, compare lado a lado e mantenha a sua.</p></div>
-        <div class="card"><div class="icon">&#128736;</div><h3>Perfis de dev</h3><p>Node, PHP, Python, Rust, Go, Java/Kotlin, bancos e Chromium, com o custo em disco de cada grupo.</p></div>
+        <div class="card"><div class="icon">&#128202;</div><h3>Diagnostico antes</h3><p>Modelo, Android, nucleos, memoria, disco, rede e processos antes de baixar qualquer pacote.</p></div>
+        <div class="card"><div class="icon">&#127912;</div><h3>XFCE4 minimo</h3><p>So o essencial: xfwm4, painel, sessao, xfdesktop, Thunar e terminal. Sem daemons extras.</p></div>
+        <div class="card"><div class="icon">&#128421;</div><h3>Poucos processos</h3><p>~11 processos ocioso, com medidor contra o limite de 32 do Android.</p></div>
         <div class="card"><div class="icon">&#127760;</div><h3>HTTPS na LAN</h3><p>noVNC na 6080 com certificado autoassinado e tunel HTTPS publico do Cloudflare.</p></div>
-        <div class="card"><div class="icon">&#9881;</div><h3>Zero memoria</h3><p>Banner com as URLs ao abrir o Termux. Comandos <code class="inline">desktop</code>, <code class="inline">url</code> e <code class="inline">dextermux-session</code>.</p></div>
+        <div class="card"><div class="icon">&#9881;</div><h3>Zero memoria</h3><p>Banner com as URLs ao abrir o Termux. Comandos <code class="inline">desktop</code>, <code class="inline">url</code> e <code class="inline">dextermux-status</code>.</p></div>
       </div>
     </section>
 
@@ -137,25 +135,13 @@
       <p class="sub" style="margin-top:22px">Automatico, sem menus:</p>
       <div class="install">
         <span class="prompt">$</span>
-        <code>curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | VNC_PASS=MinhaSen bash -s -- --desktop=cinnamon --dev=core,web</code>
+        <code>curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | VNC_PASS=MinhaSen bash</code>
       </div>
       <p class="sub" style="margin-top:22px">Conferir o plano sem instalar:</p>
       <div class="install">
         <span class="prompt">$</span>
-        <code>bash setup.sh --dry-run --desktop=all --dev=core,web</code>
+        <code>bash setup.sh --dry-run</code>
       </div>
-    </section>
-
-    <section id="sessoes">
-      <h2>Sessoes graficas</h2>
-      <table>
-        <tr><th>Opcao</th><th>O que e</th><th>Disco</th><th>Estado</th></tr>
-        <tr><td><code class="inline">cinnamon</code></td><td>Sessao do Linux Mint, padrao</td><td>~1691 MB</td><td>validado</td></tr>
-        <tr><td><code class="inline">xfce</code></td><td>XFCE4 padrao, sem restilizacao</td><td>~739 MB</td><td>validado</td></tr>
-        <tr><td><code class="inline">mate</code></td><td>Visual classico do Ubuntu</td><td>~1345 MB</td><td>experimental</td></tr>
-        <tr><td><code class="inline">all</code></td><td>As tres, para comparar antes de decidir</td><td>~2224 MB</td><td>comparacao</td></tr>
-        <tr><td><code class="inline">none</code></td><td>Sem desktop, apenas sshd e ferramentas</td><td>~260 MB</td><td>validado</td></tr>
-      </table>
     </section>
 
     <section id="acesso">
@@ -182,9 +168,7 @@
         <tr><th>Comando</th><th>Efeito</th></tr>
         <tr><td><code class="inline">desktop</code></td><td>Sobe sshd, Xvnc, websockify e cloudflared.</td></tr>
         <tr><td><code class="inline">url</code></td><td>Imprime as URLs, a sessao e o estado dos servicos.</td></tr>
-        <tr><td><code class="inline">dextermux-session list</code></td><td>Lista as sessoes instaladas e a padrao.</td></tr>
-        <tr><td><code class="inline">dextermux-session try mate</code></td><td>Abre outra sessao em paralelo na porta 6081.</td></tr>
-        <tr><td><code class="inline">dextermux-session remove cinnamon</code></td><td>Remove os pacotes exclusivos da sessao.</td></tr>
+        <tr><td><code class="inline">dextermux-status</code></td><td>Processos, top 5, TLS e tunel.</td></tr>
         <tr><td><code class="inline">dextermux-tls show</code></td><td>Mostra certificado, SANs e validade.</td></tr>
         <tr><td><code class="inline">dextermux-tls renew</code></td><td>Regenera o certificado da LAN.</td></tr>
         <tr><td><code class="inline">tail -f $TMPDIR/cf.log</code></td><td>Acompanha o tunel do Cloudflare.</td></tr>
@@ -193,9 +177,9 @@
 
     <section>
       <div class="note">
-        <b>MATE e experimental.</b> Cinnamon e XFCE foram validados no aparelho. Se uma sessao morrer em menos
-        de 15 segundos, o instalador registra em <code class="inline">$TMPDIR/session.log</code> e cai para
-        <code class="inline">xfce</code>.
+        <b>Limite de 32 processos.</b> O Android 12+ mata o app acima de 32 processos criados por ele.
+        Use <code class="inline">dextermux-status</code> para medir; o README traz os comandos ADB que
+        elevam o limite.
       </div>
       <div class="note" style="margin-top:16px">
         <b>Nao usa xrdp.</b> O pacote <code class="inline">xrdp 0.10.6.1</code> do Termux tem bug de autenticacao
