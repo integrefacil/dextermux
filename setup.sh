@@ -39,7 +39,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="3.0.3"
+DEXTERMUX_VERSION="3.1.0"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -421,6 +421,7 @@ if [ "$TLS" = "1" ]; then SCHEME=https; else SCHEME=http; fi
 echo ""
 echo "=== Acesso remoto ==="
 echo "Desktop:      XFCE4"
+echo "SSH:          ssh -p 8022 $(whoami)@$IP"
 if pgrep -f "[X]vnc :1" >/dev/null; then
     echo "VNC local:    vnc://$IP:5901"
 else
@@ -443,6 +444,94 @@ echo ""
 EOF
     chmod +x "$H/show-access.sh"
     ln -sf "$H/show-access.sh" "$P/bin/url"
+}
+
+write_ssh_helper() {
+    mkdir -p "$H/.dextermux"
+    cat >"$H/.dextermux/ssh.sh" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# Gerado por dextermux. Informacoes e gestao de acesso SSH.
+set -eu
+H="$HOME"
+AUTH="$H/.ssh/authorized_keys"
+
+lan_ip() {
+    ifconfig 2>/dev/null | sed -n '/^wlan0/,/^$/s/.*inet \([0-9.]*\) .*/\1/p' | head -1
+}
+
+status() {
+    local ip user total
+    ip=$(lan_ip)
+    user=$(whoami)
+    echo ""
+    echo "=== SSH ==="
+    echo "Usuario:  $user"
+    echo "Porta:    8022"
+    echo "Endereco: ${ip:-<ip>}"
+    echo "Comando:  ssh -p 8022 $user@${ip:-<ip>}"
+    if pgrep -f "[s]shd" >/dev/null; then
+        echo "sshd:     ativo"
+    else
+        echo "sshd:     parado (rode: desktop)"
+    fi
+    if [ -s "$AUTH" ]; then
+        total=$(grep -c '^ssh-\|^ecdsa-' "$AUTH" 2>/dev/null || true)
+        echo "Chaves:   ${total:-0} autorizada(s)"
+    else
+        echo "Chaves:   nenhuma"
+    fi
+    echo ""
+    echo "Autorizar uma chave:"
+    echo "  dextermux-ssh add \"ssh-ed25519 AAAA... usuario@pc\""
+    echo "Sem chave, use a senha do Termux (defina com: passwd)."
+    echo "=========="
+    echo ""
+}
+
+add_key() {
+    local key="${1:-}"
+    if [ -z "$key" ]; then
+        read -r key || true
+    fi
+    case "$key" in
+        ssh-*|ecdsa-*|sk-*) ;;
+        *) echo "chave invalida" >&2; exit 1 ;;
+    esac
+    mkdir -p "$H/.ssh"
+    chmod 700 "$H/.ssh"
+    touch "$AUTH"
+    if grep -qF "$key" "$AUTH" 2>/dev/null; then
+        echo "chave ja autorizada"
+    else
+        printf '%s\n' "$key" >>"$AUTH"
+        echo "chave adicionada"
+    fi
+    chmod 600 "$AUTH"
+}
+
+list_keys() {
+    if [ ! -s "$AUTH" ]; then
+        echo "nenhuma chave autorizada"
+        return 0
+    fi
+    ssh-keygen -lf "$AUTH" 2>/dev/null || cat "$AUTH"
+}
+
+case "${1:-status}" in
+    status) status ;;
+    add)
+        shift
+        add_key "${1:-}"
+        ;;
+    list) list_keys ;;
+    *)
+        echo "uso: dextermux-ssh [status|add \"<chave>\"|list]" >&2
+        exit 1
+        ;;
+esac
+EOF
+    chmod +x "$H/.dextermux/ssh.sh"
+    ln -sf "$H/.dextermux/ssh.sh" "$P/bin/dextermux-ssh"
 }
 
 write_tls_helper() {
@@ -643,12 +732,25 @@ EOF
 write_ssh_key() {
     mkdir -p "$H/.ssh"
     chmod 700 "$H/.ssh"
+    touch "$H/.ssh/authorized_keys"
+    chmod 600 "$H/.ssh/authorized_keys"
     if [ -n "$SSH_PUBKEY" ]; then
-        grep -qF "$SSH_PUBKEY" "$H/.ssh/authorized_keys" 2>/dev/null || echo "$SSH_PUBKEY" >>"$H/.ssh/authorized_keys"
-        chmod 600 "$H/.ssh/authorized_keys"
-        ok "chave adicionada em ~/.ssh/authorized_keys"
+        case "$SSH_PUBKEY" in
+            ssh-*|ecdsa-*|sk-*) ;;
+            *)
+                warn "SSH_PUBKEY nao parece uma chave publica; ignorando"
+                info "use: dextermux-ssh add \"<chave>\""
+                return 0
+                ;;
+        esac
+        if grep -qF "$SSH_PUBKEY" "$H/.ssh/authorized_keys" 2>/dev/null; then
+            ok "chave ja estava autorizada"
+        else
+            printf '%s\n' "$SSH_PUBKEY" >>"$H/.ssh/authorized_keys"
+            ok "chave adicionada em ~/.ssh/authorized_keys"
+        fi
     else
-        info "sem chave: use ssh-copy-id -p 8022 <usuario>@<ip> de outro PC"
+        info "sem chave: use 'dextermux-ssh add \"<chave>\"' ou ssh-copy-id -p 8022 <usuario>@<ip>"
     fi
 }
 
@@ -756,6 +858,7 @@ run_install() {
     write_show_access
     write_tls_helper
     write_status_helper
+    write_ssh_helper
 
     step "Banner do shell"
     write_bashrc_block
@@ -796,6 +899,7 @@ repair_only() {
     write_show_access
     write_tls_helper
     write_status_helper
+    write_ssh_helper
     step "Banner do shell"
     write_bashrc_block
     step "Autostart no boot"
@@ -834,6 +938,12 @@ print_summary() {
     row "Desktop" "XFCE4"
     row "VNC local" "vnc://$ip:5901"
     row "noVNC local" "$scheme://$ip:6080/vnc.html"
+    row "SSH" "ssh -p 8022 $(whoami)@$ip"
+    if [ -s "$H/.ssh/authorized_keys" ]; then
+        row "Chaves SSH" "$(grep -c '^ssh-\|^ecdsa-' "$H/.ssh/authorized_keys" 2>/dev/null || echo 0) autorizada(s)"
+    else
+        row "Chaves SSH" "nenhuma (use dextermux-ssh add)"
+    fi
     row "Tunel publico" "$public"
     row "Senha VNC" "${VNC_PASS:-(a existente em ~/.vnc/passwd)}"
     row "Certificado" "$H/.dextermux/tls/server.crt"
@@ -843,6 +953,7 @@ print_summary() {
     section "Comandos"
     printf '  %-22s %s\n' "desktop" "sobe sshd, Xvnc, websockify e o tunel (se ligado)"
     printf '  %-22s %s\n' "url" "mostra IP, portas e estado"
+    printf '  %-22s %s\n' "dextermux-ssh" "usuario, IP, porta e chaves autorizadas"
     printf '  %-22s %s\n' "dextermux-status" "processos, top 5, TLS e tunel"
     printf '  %-22s %s\n' "dextermux-tls show" "certificado e SANs"
     printf '  %-22s %s\n' "dextermux-tls renew" "regenera o certificado"
@@ -875,7 +986,7 @@ print_dry_run() {
     printf '  Pacotes xfce: %s\n' "$PKGS_XFCE"
     printf '\n  Arquivos que seriam gravados:\n'
     printf '    ~/.vnc/xstartup\n    ~/.vnc/passwd\n    ~/start-desktop.sh\n'
-    printf '    ~/show-access.sh\n    ~/.dextermux/tls.sh\n    ~/.dextermux/status.sh\n'
+    printf '    ~/show-access.sh\n    ~/.dextermux/tls.sh\n    ~/.dextermux/status.sh\n    ~/.dextermux/ssh.sh\n'
     printf '    ~/.dextermux/tunnel\n    ~/.dextermux/tls/{server.crt,server.key,mode}\n'
     printf '    ~/.termux/boot/start-services.sh\n    ~/.bashrc (bloco dextermux, banner)\n\n'
 }

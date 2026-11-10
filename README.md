@@ -31,6 +31,10 @@ O instalador nao faz perguntas: tudo vem por flag ou variavel de ambiente.
 | Navegador (externo, com `--tunnel`) | `<url-do-tunel>/vnc.html` |
 | SSH | `ssh -p 8022 <usuario>@<ip>` |
 
+O banner e o resumo mostram o comando SSH pronto, com usuario e IP. Para autorizar uma chave depois,
+rode `dextermux-ssh add "ssh-ed25519 AAAA... usuario@pc"` no Termux. Sem chave, use a senha do Termux
+(defina com `passwd`).
+
 No primeiro acesso HTTPS o navegador mostra um aviso de certificado: aceite uma vez e o noVNC
 conecta por `wss`. O IP da LAN entra nas SANs e o certificado e regenerado quando o IP muda.
 
@@ -40,6 +44,8 @@ conecta por `wss`. O IP da LAN entra nas SANs e o certificado e regenerado quand
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
 | `url` | mostra IP, portas, TLS e estado |
+| `dextermux-ssh` | usuario, IP, porta, comando e chaves autorizadas |
+| `dextermux-ssh add "<chave>"` | autoriza uma chave publica sem editar arquivo |
 | `dextermux-status` | processos, top 5 por memoria, TLS e tunel |
 | `dextermux-tls show` | certificado, SANs e validade |
 | `dextermux-tls renew` | regenera o certificado da LAN |
