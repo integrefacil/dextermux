@@ -21,6 +21,7 @@ depende de terminal.
 | `--ssh-pubkey=KEY` | vazio | chave publica adicionada a `~/.ssh/authorized_keys` |
 | `--tunnel` / `--no-tunnel` | `--no-tunnel` | liga ou desliga o cloudflared |
 | `--tls` / `--no-tls` | `--tls` | HTTPS autoassinado na LAN para o noVNC |
+| `--icons` / `--no-icons` | `--no-icons` | icones na area de trabalho (desligado evita gvfs/tumbler) |
 | `--repair` | desligado | nao instala pacotes; regrava configs e reinicia |
 | `--dry-run` | desligado | imprime o plano e sai |
 | `-h`, `--help` | | ajuda |
@@ -121,7 +122,8 @@ depende de terminal.
 | instalacao | `~/dextermux-install.log` |
 
 Orcamento esperado: ~15 processos ocioso (bash, sshd, Xvnc, websockify, xfce4-session, xfwm4,
-xfce4-panel, xfdesktop, xfsettingsd, xfconfd, dbus-daemon, dbus-launch e gvfs quando o Thunar abre).
+xfce4-panel, xfdesktop, xfsettingsd, xfconfd, dbus-daemon, dbus-launch e gvfsd). Thunar, tumbler e
+os agentes GNOME ficam desligados e nao entram na conta.
 
 Faixas do `dextermux-status`: ate 22 `ok`, 23-26 `atencao`, 27+ `critico`. A contagem ignora
 utilitarios transitorios (`ps`, `head`, `wc`, `tr`, `grep`, `sed`, `awk`, `sort`, `sleep`).

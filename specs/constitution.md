@@ -30,7 +30,7 @@ Ao abrir o Termux, o usuario DEVE ver as URLs de acesso e o estado dos servicos.
 O instalador DEVE medir o aparelho antes de qualquer download (modelo, versao do Android, nucleos, memoria total e livre, espaco livre em `$HOME`, alcance de `packages.termux.dev` e `github.com`, instalacao existente, contagem de processos) e imprimir o resultado sem pausar.
 
 ### IX. Process Budget
-O ambiente DEVE permanecer abaixo de 32 processos, teto imposto pelo phantom process killer do Android 12+. O desenho DEVE mirar 15-20 processos ociosos com dbus. O comando `dextermux-status` DEVE medir, avisar a partir de 23 e marcar critico a partir de 27, sem bloquear instalacao ou reparo.
+O ambiente DEVE permanecer abaixo de 32 processos, teto imposto pelo phantom process killer do Android 12+. O desenho DEVE mirar 12-16 processos ociosos com dbus, sem Thunar daemon e sem agentes GNOME. O comando `dextermux-status` DEVE medir, avisar a partir de 23 e marcar critico a partir de 27, sem bloquear instalacao ou reparo.
 
 ## Additional Constraints
 

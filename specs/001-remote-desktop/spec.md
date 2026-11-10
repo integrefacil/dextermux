@@ -115,7 +115,7 @@ O usuario quer trafego criptografado na rede local e um ambiente que nao seja mo
 - **SC-004**: A URL publica responde HTTP 200 em `vnc.html` apos o tunel registrar a conexao.
 - **SC-005**: Apos queda total, `desktop` restabelece 5901 e 6080 sem intervencao manual.
 - **SC-006**: `curl -k https://<ip>:6080/vnc.html` responde 200 e a mesma porta recusa HTTP em texto claro.
-- **SC-007**: O ambiente ocioso fica com 15-20 processos, abaixo do teto de 23 usado pelo status.
+- **SC-007**: O ambiente ocioso fica com 12-16 processos, abaixo do teto de 23 usado pelo status.
 - **SC-008**: `dextermux-status` mostra a contagem e o top 5 em menos de 2 segundos.
 
 ## Assumptions

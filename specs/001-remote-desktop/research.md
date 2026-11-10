@@ -142,6 +142,16 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
 - **Efeito colateral**: o `openssh` e substituido e o `sshd` em execucao morre. Rodar `pkill -x sshd; sshd` restaura. Documentado no README.
 - **Nunca** instalar XFCE sobre um Termux com pacotes pendentes: os sonames podem nao casar.
 
+## 20. Processos ocultos do XFCE (v3.4.0)
+
+- **Fato**: a sessao failsafe do XFCE (`$PREFIX/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml`) inclui `Thunar --daemon`, que sobe `gvfsd`, `gvfsd-trash`, `gvfsd-metadata`, `dconf-service` e `tumblerd` (6 processos).
+- **Fato**: `LaunchGNOME` (padrao true) faz o `xfce4-session` iniciar `ssh-agent` e `gpg-agent`; eles acumulam um por sessao e nunca sao colhidos.
+- **Fato**: os icones da area de trabalho fazem o `xfdesktop` consultar o gvfs e acionar o tumbler.
+- **Sintoma**: 27-31 processos mesmo sem uso.
+- **Solucao**: XML de sessao proprio sem Thunar, `LaunchGNOME=false`, autostart de at-spi/gnome-keyring com `Hidden=true` e icones desligados por padrao (`--icons` religa).
+- **Cuidado**: `pkill -x ssh-agent` nao funciona porque o `comm` e o caminho completo; use `pkill -f "[s]sh-agent -s"`.
+- **Efeito**: stack ocioso cai para ~12-16 processos.
+
 ## Versoes validadas (2026-11-09)
 
 | Componente | Versao |

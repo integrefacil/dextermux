@@ -58,6 +58,7 @@ Publico:      desligado (rode: desktop com --tunnel)
 | `dextermux-tls show` | certificado, SANs e validade |
 | `dextermux-tls renew` | regenera o certificado |
 | `dextermux-tls disable` | volta a LAN para HTTP |
+| `dextermux-status` | mostra processos, top 5 e o que esta consumindo |
 | `vncserver -kill :1` | encerra a sessao VNC |
 | `tail -f $TMPDIR/cf.log` | log do tunel |
 | `tail -f ~/.vnc/localhost:1.log` | log do Xvnc |
@@ -82,6 +83,8 @@ dextermux-status
 ```
 
 - `ok` ate 22, `atencao` de 23 a 26, `critico` a partir de 27.
+- O daemon do Thunar e os agentes GNOME ficam desligados por padrao.
+- Para exibir icones na area de trabalho: `--icons` (consome gvfs e tumbler).
 - Para elevar o limite, via PC com ADB:
   ```bash
   adb shell settings put global settings_enable_monitor_phantom_procs false
