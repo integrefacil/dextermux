@@ -164,7 +164,7 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
 
 ## 22. Xubuntu no proot (v5.0.0)
 
-- **Fato**: `xubuntu-desktop` completo instala ~2,5 GB e sobe ~25-30 processos ocioso.
+- **Fato**: `xubuntu-desktop` completo instala ~2,5 GB e sobe ~25-30 processos ocioso; `xubuntu-core` + `xubuntu-default-settings` fica em ~1,5 GB e ~18-22 processos, mantendo o visual.
 - **Fato**: o `Xvnc` do Ubuntu dentro do proot compartilha a rede do Termux; o websockify continua na 6080.
 - **Decisao**: rootfs dedicado `xubuntu` (via `proot-distro install -n xubuntu ubuntu`), modo em `~/.dextermux/desktop` e fallback para o XFCE nativo em 20 s.
 - **Risco**: sem ADB, o teto de 32 processos e atingido com facilidade; o modo e experimental.

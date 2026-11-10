@@ -95,13 +95,14 @@ dextermux-gui libreoffice     # app grafico no XFCE
 ## 6. Xubuntu no proot (experimental)
 
 ```bash
-bash setup.sh --xubuntu
-dextermux-desktop native     # volta ao XFCE
-dextermux-desktop xubuntu    # usa o Xubuntu
+bash setup.sh --xubuntu          # core: visual do Xubuntu, sem apps extras
+bash setup.sh --xubuntu=full     # metapacote completo
+dextermux-desktop native         # volta ao XFCE
+dextermux-desktop xubuntu        # usa o Xubuntu
 ```
 
-- ~3 GB e 20-40 min de instalacao.
-- ~25-30 processos ocioso: risco alto de signal 9 sem ADB.
+- Core: ~1,5 GB e 10-20 min; full: ~3 GB e 20-40 min.
+- Core ~18-22 processos ocioso; full ~25-30.
 - Fallback automatico para o XFCE se nao subir em 20 s.
 
 Reset destrutivo:
