@@ -46,7 +46,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="5.0.0"
+DEXTERMUX_VERSION="5.0.1"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -365,7 +365,8 @@ reset_all() {
 
 configure_xubuntu_session() {
     [ -d "$XUBUNTU_ROOT" ] || return 0
-    local vnc="$XUBUNTU_ROOT/root/.vnc"
+    local vnc="$XUBUNTU_ROOT/root/.config/tigervnc"
+    rm -rf "$XUBUNTU_ROOT/root/.vnc"
     mkdir -p "$vnc"
     if [ -f "$H/.vnc/passwd" ]; then
         cp -f "$H/.vnc/passwd" "$vnc/passwd"
@@ -430,7 +431,8 @@ FILE="$HOME/.dextermux/desktop"
 XROOT="$P/var/lib/proot-distro/containers/xubuntu/rootfs"
 
 restart() {
-    pkill -f "[X]vnc :1" 2>/dev/null || true
+    pkill -f "Xtigervnc|[X]vnc :1" 2>/dev/null || true
+    pkill -f "proot-distro login xubuntu" 2>/dev/null || true
     sleep 1
     rm -f "$TMPDIR/.X1-lock" "$TMPDIR/.X11-unix/X1" "$HOME/.vnc/"*:1.pid 2>/dev/null || true
     "$HOME/start-desktop.sh"
@@ -671,17 +673,17 @@ MODE=$(cat "$DIR/desktop" 2>/dev/null || echo native)
 XROOT="$P/var/lib/proot-distro/containers/xubuntu/rootfs"
 
 if [ "$MODE" = "xubuntu" ] && [ -d "$XROOT" ]; then
-    if ! pgrep -f "[X]vnc :1" >/dev/null; then
+    if ! pgrep -f "Xtigervnc|[X]vnc :1" >/dev/null; then
         echo "iniciando Xubuntu (proot)"
-        proot-distro login xubuntu -- vncserver :1 -geometry __GEOMETRY__ -depth 24 -localhost no -SecurityTypes VncAuth >/dev/null 2>&1 || true
+        setsid proot-distro login xubuntu -- sh -c "vncserver :1 -geometry __GEOMETRY__ -depth 24 -localhost no -SecurityTypes VncAuth; exec sleep 100000" >"$TMPDIR/xub-vnc.log" 2>&1 </dev/null &
         i=0
-        while [ $i -lt 20 ]; do
-            pgrep -f "[X]vnc :1" >/dev/null && break
+        while [ $i -lt 25 ]; do
+            pgrep -f "Xtigervnc|[X]vnc :1" >/dev/null && break
             i=$((i + 1))
             sleep 1
         done
     fi
-    if ! pgrep -f "[X]vnc :1" >/dev/null; then
+    if ! pgrep -f "Xtigervnc|[X]vnc :1" >/dev/null; then
         echo "Xubuntu nao subiu; usando XFCE nativo"
         echo native >"$DIR/desktop"
         MODE=native
@@ -775,7 +777,7 @@ echo ""
 echo "=== Acesso remoto ==="
 echo "Desktop:      XFCE4"
 echo "SSH:          ssh -p 8022 $(whoami)@$IP"
-if pgrep -f "[X]vnc :1" >/dev/null; then
+if pgrep -f "Xtigervnc|[X]vnc :1" >/dev/null; then
     echo "VNC local:    vnc://$IP:5901"
 else
     echo "VNC:          parado (rode: desktop)"
@@ -1041,10 +1043,11 @@ TUNNEL=$(cat "$H/.dextermux/tunnel" 2>/dev/null || echo 0)
 
 echo ""
 echo "=== dextermux ==="
-echo "Desktop:    XFCE4"
+MODE=$(cat "$H/.dextermux/desktop" 2>/dev/null || echo native)
+if [ "$MODE" = "xubuntu" ]; then echo "Desktop:    Xubuntu (proot)"; else echo "Desktop:    XFCE4 (native)"; fi
 if [ "$TLS" = "1" ]; then echo "TLS:        https"; else echo "TLS:        http"; fi
 if [ "$TUNNEL" = "1" ]; then echo "Tunel:      ligado"; else echo "Tunel:      desligado"; fi
-if pgrep -f "[X]vnc :1" >/dev/null; then echo "VNC:        ativo"; else echo "VNC:        parado"; fi
+if pgrep -f "Xtigervnc|[X]vnc :1" >/dev/null; then echo "VNC:        ativo"; else echo "VNC:        parado"; fi
 TERM_EMU=$(DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator 2>/dev/null || echo "?")
 TERM_BIN=$(command -v xfce4-terminal 2>/dev/null || echo "ausente")
 echo "Terminal:   $TERM_EMU ($TERM_BIN)"
@@ -1155,6 +1158,8 @@ write_modes() {
 
 stop_services() {
     vncserver -kill :1 >/dev/null 2>&1 || true
+    pkill -f "Xtigervnc|[X]vnc :1" 2>/dev/null || true
+    pkill -f "proot-distro login xubuntu" 2>/dev/null || true
     pkill -f "[w]ebsockify" 2>/dev/null || true
     pkill -f "[c]loudflared tunnel" 2>/dev/null || true
     pkill -f "[s]sh-agent -s" 2>/dev/null || true
@@ -1274,6 +1279,9 @@ run_install() {
     step "Modo de desktop"
     write_desktop_mode
     write_desktop_helper
+    if [ -d "$XUBUNTU_ROOT" ]; then
+        configure_xubuntu_session
+    fi
     info "desktop: $(cat "$H/.dextermux/desktop" 2>/dev/null || echo native)"
 
     step "Certificado TLS"
