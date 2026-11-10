@@ -133,6 +133,15 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
 - **Uso real**: terminal 12; cada sessao SSH +2; Thunar/gvfs 15-17; tunel +1.
 - **Decisao**: `.bashrc` apenas imprime o banner; o desktop sobe por `desktop` ou no boot.
 
+## 19. Sonames do Termux e `pkg upgrade` (v3.2.0)
+
+- **Fato**: o Termux nao mantem compatibilidade de soname entre versoes. O `libvte` 0.84.1 exige `libicuuc.so.79`; com `libicu` antigo, o `xfce4-terminal` falha com `CANNOT LINK EXECUTABLE`.
+- **Sintoma**: `Failed to execute default Terminal Emulator. I/O error.` no XFCE, mesmo com o binario presente.
+- **Diagnostico**: `DISPLAY=:1 XAUTHORITY=$HOME/.Xauthority xfce4-terminal --version` mostra a biblioteca faltante.
+- **Decisao**: o instalador roda `pkg upgrade -y` antes de instalar, com `--force-confold`.
+- **Efeito colateral**: o `openssh` e substituido e o `sshd` em execucao morre. Rodar `pkill -x sshd; sshd` restaura. Documentado no README.
+- **Nunca** instalar XFCE sobre um Termux com pacotes pendentes: os sonames podem nao casar.
+
 ## Versoes validadas (2026-11-09)
 
 | Componente | Versao |

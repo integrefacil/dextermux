@@ -39,7 +39,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="3.1.0"
+DEXTERMUX_VERSION="3.2.0"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -52,7 +52,7 @@ VNC_PASS="${VNC_PASS:-}"
 
 MODE="install"
 DRY_RUN=0
-TOTAL_STEPS=14
+TOTAL_STEPS=18
 STEP_NO=0
 LOG="$H/dextermux-install.log"
 
@@ -199,7 +199,9 @@ disk_free_mb() {
 
 process_count() {
     local n
-    n=$(ps -u "$(id -u)" -o pid= 2>/dev/null | wc -l | tr -d ' ')
+    # shellcheck disable=SC2009
+    n=$(ps -u "$(id -u)" -o comm= 2>/dev/null \
+        | grep -vcE '^(ps|head|wc|tr|grep|sed|awk|sort|sleep)$' || true)
     if [ -z "$n" ] || [ "$n" = "0" ]; then
         n=0
         for d in /proc/[0-9]*; do
@@ -211,9 +213,9 @@ process_count() {
 
 process_verdict() {
     local n="$1"
-    if [ "$n" -ge 30 ]; then
+    if [ "$n" -ge 27 ]; then
         printf 'critico'
-    elif [ "$n" -ge 24 ]; then
+    elif [ "$n" -ge 23 ]; then
         printf 'atencao'
     else
         printf 'ok'
@@ -660,7 +662,9 @@ H="$HOME"
 
 count() {
     local n
-    n=$(ps -u "$(id -u)" -o pid= 2>/dev/null | wc -l | tr -d ' ')
+    # shellcheck disable=SC2009
+    n=$(ps -u "$(id -u)" -o comm= 2>/dev/null \
+        | grep -vcE '^(ps|head|wc|tr|grep|sed|awk|sort|sleep)$' || true)
     if [ -z "$n" ] || [ "$n" = "0" ]; then
         n=0
         for d in /proc/[0-9]*; do
@@ -671,9 +675,9 @@ count() {
 }
 
 verdict() {
-    if [ "$1" -ge 30 ]; then
+    if [ "$1" -ge 27 ]; then
         printf 'critico'
-    elif [ "$1" -ge 24 ]; then
+    elif [ "$1" -ge 23 ]; then
         printf 'atencao'
     else
         printf 'ok'
@@ -694,7 +698,7 @@ TERM_EMU=$(DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator
 TERM_BIN=$(command -v xfce4-terminal 2>/dev/null || echo "ausente")
 echo "Terminal:   $TERM_EMU ($TERM_BIN)"
 if pgrep -f "[w]ebsockify" >/dev/null; then echo "noVNC:      ativo"; else echo "noVNC:      parado"; fi
-echo "Processos:  $N / limite Android 32 ($(verdict "$N"))"
+echo "Processos:  $N / 32 ($(verdict "$N")) - ok ate 22, atencao 23-26"
 echo ""
 echo "Top 5 por memoria:"
 ps -u "$(id -u)" -o pid,rss,comm --sort=-rss 2>/dev/null | head -6 || true
@@ -805,6 +809,16 @@ run_packages() {
     install_pkgs x11-repo
     pkg update -y 2>&1 | tee -a "$LOG" || warn "pkg update retornou erro; seguindo"
 
+    step "Atualizando pacotes"
+    if [ "${DEXTERMUX_NO_UPGRADE:-0}" = "1" ]; then
+        info "pulado (DEXTERMUX_NO_UPGRADE=1)"
+    else
+        pkg upgrade -y \
+            -o Dpkg::Options::=--force-confdef \
+            -o Dpkg::Options::=--force-confold \
+            </dev/null 2>&1 | tee -a "$LOG" || warn "pkg upgrade retornou erro; seguindo"
+    fi
+
     step "Pacotes pendentes"
     if [ -n "$(dpkg --audit 2>/dev/null)" ]; then
         info "corrigindo pacotes pendentes"
@@ -886,7 +900,7 @@ run_install() {
 }
 
 repair_only() {
-    TOTAL_STEPS=9
+    TOTAL_STEPS=8
     : >"$LOG"
     printf 'dextermux %s - reparo %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
     step "Limpeza de versoes antigas"

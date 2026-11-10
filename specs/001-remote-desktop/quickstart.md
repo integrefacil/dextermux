@@ -81,7 +81,7 @@ Android 12+ mata com `SIGKILL` os processos criados pelo app acima de 32 no tota
 dextermux-status
 ```
 
-- `ok` ate 23, `atencao` de 24 a 29, `critico` a partir de 30.
+- `ok` ate 22, `atencao` de 23 a 26, `critico` a partir de 27.
 - Para elevar o limite, via PC com ADB:
   ```bash
   adb shell settings put global settings_enable_monitor_phantom_procs false
@@ -118,6 +118,8 @@ Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 | Aviso de certificado | certificado autoassinado | aceite uma vez ou instale o cert no cliente |
 | `wss` nao conecta | certificado nao aceito na pagina | abra `https://<ip>:6080/vnc.html` primeiro |
 | IP da LAN mudou | SANs antigas | `dextermux-tls renew` e `desktop` |
+| `library "libicuuc.so.79" not found` | pacotes desatualizados apos upgrade de soname | `pkg upgrade -y` |
+| SSH caiu apos `pkg upgrade` | openssh substituido | `pkill -x sshd; sshd` |
 | URL publica nao abre | tunel desligado ou caiu | `desktop` com `--tunnel` |
 
 ## 9. Seguranca

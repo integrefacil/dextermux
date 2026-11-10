@@ -94,7 +94,7 @@ O usuario quer trafego criptografado na rede local e um ambiente que nao seja mo
 - **FR-013**: O instalador DEVE medir recursos (modelo, Android, nucleos, memoria, disco, rede, processos) e imprimir o resultado sem pausar.
 - **FR-014**: O sistema DEVE servir o noVNC por HTTPS autoassinado na LAN, com o IP atual nas SANs e regeneracao quando o IP mudar.
 - **FR-015**: O sistema DEVE permitir ligar, desligar e renovar o HTTPS local sem reinstalar.
-- **FR-016**: O sistema DEVE medir e reportar a contagem de processos, avisando em 24 e marcando critico em 30, sem bloquear.
+- **FR-016**: O sistema DEVE medir e reportar a contagem de processos, avisando em 23 e marcando critico em 27, sem bloquear.
 - **FR-017**: O sistema DEVE registrar log completo da execucao em `~/dextermux-install.log`.
 - **FR-018**: O `.bashrc` DEVE apenas imprimir o banner, sem iniciar servicos.
 - **FR-019**: O sistema DEVE exibir usuario, IP, porta 8022 e comando SSH no banner e no resumo, e permitir autorizar chaves depois da instalacao via `dextermux-ssh add`.
@@ -115,7 +115,7 @@ O usuario quer trafego criptografado na rede local e um ambiente que nao seja mo
 - **SC-004**: A URL publica responde HTTP 200 em `vnc.html` apos o tunel registrar a conexao.
 - **SC-005**: Apos queda total, `desktop` restabelece 5901 e 6080 sem intervencao manual.
 - **SC-006**: `curl -k https://<ip>:6080/vnc.html` responde 200 e a mesma porta recusa HTTP em texto claro.
-- **SC-007**: O ambiente ocioso fica com 11-13 processos, abaixo do teto de 24 usado pelo status.
+- **SC-007**: O ambiente ocioso fica com 15-20 processos, abaixo do teto de 23 usado pelo status.
 - **SC-008**: `dextermux-status` mostra a contagem e o top 5 em menos de 2 segundos.
 
 ## Assumptions
