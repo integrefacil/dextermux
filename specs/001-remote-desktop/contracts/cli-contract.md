@@ -22,6 +22,7 @@ depende de terminal.
 | `--tunnel` / `--no-tunnel` | `--no-tunnel` | liga ou desliga o cloudflared |
 | `--tls` / `--no-tls` | `--tls` | HTTPS autoassinado na LAN para o noVNC |
 | `--icons` / `--no-icons` | `--no-icons` | icones na area de trabalho (desligado evita gvfs/tumbler) |
+| `--ubuntu` / `--no-ubuntu` | `--ubuntu` | instala Ubuntu via proot-distro para ferramentas glibc |
 | `--repair` | desligado | nao instala pacotes; regrava configs e reinicia |
 | `--dry-run` | desligado | imprime o plano e sai |
 | `-h`, `--help` | | ajuda |
@@ -69,6 +70,9 @@ depende de terminal.
 | `~/.dextermux/tls.sh` | implementacao de `dextermux-tls` |
 | `~/.dextermux/status.sh` | implementacao de `dextermux-status` |
 | `~/.dextermux/ssh.sh` | implementacao de `dextermux-ssh` |
+| `~/.dextermux/dev.sh` | implementacao de `dextermux-dev` |
+| `~/.dextermux/ubuntu.sh` | implementacao de `dextermux-ubuntu` |
+| `~/.dextermux/gui.sh` | ponte grafica para apps do Ubuntu |
 | `~/.dextermux/tunnel` | `1` liga o cloudflared, `0` desliga |
 | `~/.dextermux/tls/server.crt` | certificado autoassinado (SANs: IP da LAN, 127.0.0.1, localhost) |
 | `~/.dextermux/tls/server.key` | chave privada (600) |
@@ -85,6 +89,10 @@ depende de terminal.
 | `$PREFIX/bin/dextermux-tls` | symlink para `tls.sh` |
 | `$PREFIX/bin/dextermux-status` | symlink para `status.sh` |
 | `$PREFIX/bin/dextermux-ssh` | symlink para `ssh.sh` |
+| `$PREFIX/bin/dextermux-dev` | symlink para `dev.sh` |
+| `$PREFIX/bin/dextermux-ubuntu` | symlink para `ubuntu.sh` |
+| `$PREFIX/bin/dextermux-gui` | symlink para `gui.sh` |
+| `$PREFIX/bin/opencode` | wrapper que chama `dextermux-dev` |
 
 ## Comandos instalados
 
@@ -92,6 +100,9 @@ depende de terminal.
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
 | `url` | imprime IP, portas, TLS e estado |
+| `dextermux-dev` | opencode no Ubuntu, ou shell se ausente |
+| `dextermux-ubuntu` | shell no Ubuntu com `DISPLAY=:1` e XAUTHORITY |
+| `dextermux-gui APP` | executa app grafico do Ubuntu no XFCE nativo |
 | `dextermux-ssh` | usuario, IP, porta, comando e chaves autorizadas |
 | `dextermux-ssh add "<chave>"` | autoriza a chave em `authorized_keys` (700/600) |
 | `dextermux-ssh list` | fingerprints das chaves autorizadas |
@@ -101,6 +112,15 @@ depende de terminal.
 | `dextermux-tls enable` / `disable` | liga ou desliga o HTTPS e para websockify/cloudflared |
 | `dextermux-tls show` | certificado, SANs e validade |
 | `dextermux-tls mode` | imprime `https` ou `http` |
+
+## Ubuntu proot
+
+- Rootfs: `$PREFIX/var/lib/proot-distro/containers/ubuntu/rootfs`.
+- Pacotes base instalados dentro: `curl`, `git`, `ca-certificates`.
+- Ponte grafica: `--shared-tmp` expoe `$TMPDIR/.X11-unix/X1` como `/tmp/.X11-unix/X1`;
+  `~/.Xauthority` e copiado para `/root/.Xauthority` a cada execucao.
+- O wrapper `opencode` chama `dextermux-dev`, que executa `/root/.opencode/bin/opencode` se existir.
+- `--no-ubuntu` pula a instalacao; `--repair` regenera os wrappers.
 
 ## Portas
 

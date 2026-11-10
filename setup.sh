@@ -22,6 +22,7 @@
 #   --tunnel / --no-tunnel liga ou desliga o Cloudflare (default desligado)
 #   --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
 #   --icons / --no-icons   icones na area de trabalho (default desligado)
+#   --ubuntu / --no-ubuntu Ubuntu proot para ferramentas glibc (default ligado)
 #   --repair               nao instala pacotes, apenas regrava configs e reinicia
 #   --dry-run              mostra o plano e sai sem alterar nada
 #   --version              versao do instalador
@@ -40,7 +41,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="3.4.0"
+DEXTERMUX_VERSION="4.0.0"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -49,12 +50,13 @@ NOVNC_VER="${NOVNC_VER:-1.5.0}"
 TUNNEL="${TUNNEL:-0}"
 TLS="${TLS:-1}"
 DESKTOP_ICONS="${DESKTOP_ICONS:-0}"
+UBUNTU="${UBUNTU:-1}"
 SSH_PUBKEY="${SSH_PUBKEY:-}"
 VNC_PASS="${VNC_PASS:-}"
 
 MODE="install"
 DRY_RUN=0
-TOTAL_STEPS=19
+TOTAL_STEPS=20
 STEP_NO=0
 LOG="$H/dextermux-install.log"
 
@@ -139,6 +141,7 @@ Flags:
   --tunnel / --no-tunnel liga ou desliga o Cloudflare (default desligado)
   --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
   --icons / --no-icons   icones na area de trabalho (default desligado)
+  --ubuntu / --no-ubuntu Ubuntu proot para ferramentas glibc (default ligado)
   --repair               nao instala pacotes, apenas regrava configs e reinicia
   --dry-run              mostra o plano e sai sem alterar nada
   --version              versao do instalador
@@ -244,6 +247,7 @@ print_resources() {
 
 PKGS_BASE="tigervnc openssh openssl-tool python net-tools cloudflared curl tar dbus"
 PKGS_XFCE="xfwm4 xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop thunar xfce4-terminal ttf-dejavu"
+UBUNTU_ROOT="$P/var/lib/proot-distro/containers/ubuntu/rootfs"
 
 pkg_installed() {
     dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"
@@ -312,6 +316,101 @@ set_default_terminal() {
     fi
     if [ "$done" = "0" ]; then
         warn "nao consegui definir o terminal padrao; rode: dextermux-status"
+    fi
+}
+
+write_ubuntu_helpers() {
+    mkdir -p "$H/.dextermux"
+    cat >"$H/.dextermux/gui.sh" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# Gerado por dextermux. Roda um app grafico do Ubuntu no XFCE nativo.
+set -eu
+P="${PREFIX:-/data/data/com.termux/files/usr}"
+ROOT="$P/var/lib/proot-distro/containers/ubuntu/rootfs"
+if [ ! -d "$ROOT" ]; then
+    echo "Ubuntu nao instalado; rode: dextermux-ubuntu" >&2
+    exit 1
+fi
+if [ ! -S "$TMPDIR/.X11-unix/X1" ]; then
+    echo "sessao grafica parada; rode: desktop" >&2
+    exit 1
+fi
+if [ -f "$HOME/.Xauthority" ]; then
+    cp -f "$HOME/.Xauthority" "$ROOT/root/.Xauthority"
+fi
+exec proot-distro login ubuntu --shared-tmp -- env DISPLAY=:1 XAUTHORITY=/root/.Xauthority "$@"
+EOF
+    chmod +x "$H/.dextermux/gui.sh"
+    ln -sf "$H/.dextermux/gui.sh" "$P/bin/dextermux-gui"
+
+    cat >"$H/.dextermux/ubuntu.sh" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# Gerado por dextermux. Abre um shell no Ubuntu proot.
+set -eu
+exec "$HOME/.dextermux/gui.sh" bash -l
+EOF
+    chmod +x "$H/.dextermux/ubuntu.sh"
+    ln -sf "$H/.dextermux/ubuntu.sh" "$P/bin/dextermux-ubuntu"
+
+    cat >"$H/.dextermux/dev.sh" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# Gerado por dextermux. Abre o opencode no Ubuntu, ou um shell se ausente.
+set -eu
+P="${PREFIX:-/data/data/com.termux/files/usr}"
+ROOT="$P/var/lib/proot-distro/containers/ubuntu/rootfs"
+if [ -x "$ROOT/root/.opencode/bin/opencode" ]; then
+    exec "$HOME/.dextermux/gui.sh" /root/.opencode/bin/opencode "$@"
+fi
+echo "opencode nao encontrado no Ubuntu; abrindo shell." >&2
+echo "Instale com: curl -fsSL https://opencode.ai/install | bash" >&2
+exec "$HOME/.dextermux/gui.sh" bash -l
+EOF
+    chmod +x "$H/.dextermux/dev.sh"
+    ln -sf "$H/.dextermux/dev.sh" "$P/bin/dextermux-dev"
+
+    cat >"$P/bin/opencode" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# Gerado por dextermux. Executa o opencode dentro do Ubuntu proot.
+exec "$HOME/.dextermux/dev.sh" "$@"
+EOF
+    chmod +x "$P/bin/opencode"
+
+    mkdir -p "$H/.local/share/applications"
+    cat >"$H/.local/share/applications/dextermux-dev.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=OpenCode (Ubuntu)
+Comment=Agente de codigo dentro do Ubuntu proot
+Exec=dextermux-dev
+Icon=utilities-terminal
+Terminal=true
+Categories=Development;
+EOF
+    cat >"$H/.local/share/applications/dextermux-ubuntu.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Ubuntu (terminal)
+Comment=Shell no Ubuntu proot com acesso ao XFCE
+Exec=dextermux-ubuntu
+Icon=utilities-terminal
+Terminal=true
+Categories=Development;
+EOF
+}
+
+ubuntu_setup() {
+    install_pkgs proot-distro
+    if [ ! -d "$UBUNTU_ROOT" ]; then
+        info "instalando Ubuntu (pode levar alguns minutos)"
+        proot-distro install ubuntu 2>&1 | tee -a "$LOG" || warn "falha ao instalar o Ubuntu"
+    else
+        info "Ubuntu ja instalado"
+    fi
+    if [ -d "$UBUNTU_ROOT" ] && [ ! -x "$UBUNTU_ROOT/usr/bin/git" ]; then
+        info "instalando curl, git e ca-certificates no Ubuntu"
+        proot-distro login ubuntu -- bash -lc \
+            'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl git ca-certificates' \
+            2>&1 | tee -a "$LOG" || warn "apt falhou no Ubuntu"
     fi
 }
 
@@ -784,13 +883,16 @@ TERM_BIN=$(command -v xfce4-terminal 2>/dev/null || echo "ausente")
 echo "Terminal:   $TERM_EMU ($TERM_BIN)"
 if pgrep -f "[w]ebsockify" >/dev/null; then echo "noVNC:      ativo"; else echo "noVNC:      parado"; fi
 echo "Processos:  $N / 32 ($(verdict "$N")) - ok ate 22, atencao 23-26"
+if [ -d "${PREFIX:-/data/data/com.termux/files/usr}/var/lib/proot-distro/containers/ubuntu/rootfs" ]; then
+    echo "Ubuntu:     instalado"
+else
+    echo "Ubuntu:     ausente"
+fi
 echo ""
 echo "Top 5 por memoria:"
 ps -u "$(id -u)" -o pid,rss,comm --sort=-rss 2>/dev/null | head -6 || true
 echo ""
-echo "Para elevar o limite (via PC com ADB):"
-echo "  adb shell settings put global settings_enable_monitor_phantom_procs false"
-echo "  adb shell device_config put activity_manager max_phantom_processes 2147483647"
+echo "Aviso: o Android mata o app acima de 32 processos. Feche abas e apps pesados."
 echo "=================="
 echo ""
 EOF
@@ -802,6 +904,8 @@ write_bashrc_block() {
     touch "$H/.bashrc"
     sed -i '/# dextermux-start/,/# dextermux-end/d' "$H/.bashrc"
     sed -i '/show-access.sh/d; /start-desktop.sh >\/dev\/null 2>&1/d' "$H/.bashrc"
+    # o binario do opencode para Termux e glibc e nao executa; o wrapper usa o Ubuntu
+    sed -i '/^export PATH=.*\.opencode\/bin/d' "$H/.bashrc"
     cat >>"$H/.bashrc" <<'EOF'
 # dextermux-start
 [ -f $HOME/show-access.sh ] && . $HOME/show-access.sh
@@ -976,6 +1080,10 @@ run_install() {
     write_status_helper
     write_ssh_helper
 
+    step "Ubuntu (proot)"
+    if [ "$UBUNTU" = "1" ]; then
+        write_ubuntu_helpers
+    fi
     step "Banner do shell"
     write_bashrc_block
 
@@ -984,6 +1092,14 @@ run_install() {
 
     step "Chave SSH"
     write_ssh_key
+
+    step "Ubuntu (proot)"
+    if [ "$UBUNTU" = "1" ]; then
+        ubuntu_setup
+    else
+        info "Ubuntu desativado (--no-ubuntu)"
+    fi
+    write_ubuntu_helpers
 
     step "Certificado TLS"
     if [ "$TLS" = "1" ]; then
@@ -1002,7 +1118,7 @@ run_install() {
 }
 
 repair_only() {
-    TOTAL_STEPS=10
+    TOTAL_STEPS=11
     : >"$LOG"
     printf 'dextermux %s - reparo %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
     step "Parando servicos"
@@ -1069,6 +1185,11 @@ print_summary() {
     else
         row "Chaves SSH" "nenhuma (use dextermux-ssh add)"
     fi
+    if [ -d "$UBUNTU_ROOT" ]; then
+        row "Ubuntu" "instalado (dextermux-dev)"
+    else
+        row "Ubuntu" "ausente (rode com --ubuntu)"
+    fi
     row "Tunel publico" "$public"
     row "Senha VNC" "${VNC_PASS:-(a existente em ~/.vnc/passwd)}"
     row "Certificado" "$H/.dextermux/tls/server.crt"
@@ -1078,6 +1199,9 @@ print_summary() {
     section "Comandos"
     printf '  %-22s %s\n' "desktop" "sobe sshd, Xvnc, websockify e o tunel (se ligado)"
     printf '  %-22s %s\n' "url" "mostra IP, portas e estado"
+    printf '  %-22s %s\n' "dextermux-dev" "abre o opencode no Ubuntu, ou shell"
+    printf '  %-22s %s\n' "dextermux-ubuntu" "shell no Ubuntu com acesso ao XFCE"
+    printf '  %-22s %s\n' "dextermux-gui APP" "roda um app grafico do Ubuntu no XFCE"
     printf '  %-22s %s\n' "dextermux-ssh" "usuario, IP, porta e chaves autorizadas"
     printf '  %-22s %s\n' "dextermux-status" "processos, top 5, TLS e tunel"
     printf '  %-22s %s\n' "dextermux-tls show" "certificado e SANs"
@@ -1106,12 +1230,13 @@ print_dry_run() {
     row "Desktop" "XFCE4 minimo"
     row "Tunel" "$([ "$TUNNEL" = "1" ] && echo ligado || echo desligado)"
     row "HTTPS LAN" "$([ "$TLS" = "1" ] && echo autoassinado || echo desligado)"
+    row "Ubuntu" "$([ "$UBUNTU" = "1" ] && echo proot || echo desligado)"
     row "Geometria" "$GEOMETRY"
     printf '\n  Pacotes base: %s\n' "$PKGS_BASE"
     printf '  Pacotes xfce: %s\n' "$PKGS_XFCE"
     printf '\n  Arquivos que seriam gravados:\n'
     printf '    ~/.vnc/xstartup\n    ~/.vnc/passwd\n    ~/start-desktop.sh\n'
-    printf '    ~/show-access.sh\n    ~/.dextermux/tls.sh\n    ~/.dextermux/status.sh\n    ~/.dextermux/ssh.sh\n'
+    printf '    ~/show-access.sh\n    ~/.dextermux/tls.sh\n    ~/.dextermux/status.sh\n    ~/.dextermux/ssh.sh\n    ~/.dextermux/dev.sh\n    ~/.dextermux/ubuntu.sh\n    ~/.dextermux/gui.sh\n'
     printf '    ~/.dextermux/tunnel\n    ~/.dextermux/tls/{server.crt,server.key,mode}\n'
     printf '    ~/.termux/boot/start-services.sh\n    ~/.bashrc (bloco dextermux, banner)\n\n'
 }
@@ -1132,6 +1257,8 @@ parse_args() {
             --no-tls) TLS=0 ;;
             --icons) DESKTOP_ICONS=1 ;;
             --no-icons) DESKTOP_ICONS=0 ;;
+            --ubuntu) UBUNTU=1 ;;
+            --no-ubuntu) UBUNTU=0 ;;
             --repair) MODE="repair" ;;
             --dry-run) DRY_RUN=1 ;;
             -h|--help) usage; exit 0 ;;

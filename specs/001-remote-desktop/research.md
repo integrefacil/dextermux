@@ -152,6 +152,16 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
 - **Cuidado**: `pkill -x ssh-agent` nao funciona porque o `comm` e o caminho completo; use `pkill -f "[s]sh-agent -s"`.
 - **Efeito**: stack ocioso cai para ~12-16 processos.
 
+## 21. Ubuntu proot e ponte grafica (v4.0.0)
+
+- **Fato**: o opencode oficial e um binario glibc (`/lib/ld-linux-aarch64.so.1`); no Termux falha com "required file not found".
+- **Fato**: `proot-distro` instala em `$PREFIX/var/lib/proot-distro/containers/<nome>/rootfs`.
+- **Fato**: o socket X11 do Xvnc fica em `$TMPDIR/.X11-unix/X1`; `proot-distro login --shared-tmp` o expoe em `/tmp/.X11-unix/X1`.
+- **Teste**: `xterm` do Ubuntu abriu no XFCE nativo com `DISPLAY=:1` e `XAUTHORITY=/root/.Xauthority`, apos copiar `~/.Xauthority`.
+- **Decisao**: Ubuntu por padrao (`--no-ubuntu` pula), wrappers `dextermux-dev`/`dextermux-ubuntu`/`dextermux-gui`, atalhos no menu e `opencode` no `$PREFIX/bin`.
+- **Cuidado**: o instalador do opencode adiciona `~/.opencode/bin` no PATH; como o binario e glibc, o `write_bashrc_block` remove essa linha e o wrapper passa a valer.
+- **Limite**: proot nao tem systemd/GPU; apps com sandbox ou aceleracao falham.
+
 ## Versoes validadas (2026-11-09)
 
 | Componente | Versao |

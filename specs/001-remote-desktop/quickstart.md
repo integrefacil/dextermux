@@ -52,6 +52,9 @@ Publico:      desligado (rode: desktop com --tunnel)
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
 | `url` | imprime o banner com IP, portas e estado |
+| `dextermux-dev` | opencode no Ubuntu, ou shell se ausente |
+| `dextermux-ubuntu` | shell no Ubuntu com acesso ao XFCE |
+| `dextermux-gui APP` | app grafico do Ubuntu no XFCE nativo |
 | `dextermux-ssh` | usuario, IP, porta e chaves autorizadas |
 | `dextermux-ssh add "<chave>"` | autoriza uma chave publica |
 | `dextermux-status` | processos, top 5, TLS e tunel |
@@ -73,7 +76,22 @@ O certificado e autoassinado, gerado no aparelho, com o IP da `wlan0` nas SANs.
 - Para eliminar o aviso, instale `~/.dextermux/tls/server.crt` como autoridade no cliente.
 - Para desligar: `dextermux-tls disable` e `desktop`.
 
-## 5. Processos e o limite de 32
+## 5. Ferramentas glibc (Ubuntu proot)
+
+Binarios glibc (opencode, SDKs) nao rodam direto no Termux. O Ubuntu e instalado por padrao:
+
+```bash
+dextermux-dev                 # opencode ou shell
+dextermux-ubuntu              # shell no Ubuntu
+dextermux-gui libreoffice     # app grafico no XFCE
+```
+
+- `apt` dentro do Ubuntu e independente do `pkg`.
+- Apps com systemd/polkit/GPU nao funcionam.
+- `--no-ubuntu` pula a instalacao.
+- O binario antigo `~/.opencode/bin/opencode` (glibc) nao executa; pode apagar com `rm -rf ~/.opencode`.
+
+## 6. Processos e o limite de 32
 
 Android 12+ mata com `SIGKILL` os processos criados pelo app acima de 32 no total
 (phantom process killer). O ambiente fica em ~11 processos ocioso.
@@ -82,16 +100,12 @@ Android 12+ mata com `SIGKILL` os processos criados pelo app acima de 32 no tota
 dextermux-status
 ```
 
-- `ok` ate 22, `atencao` de 23 a 26, `critico` a partir de 27.
+- `ok` ate 22, `atencao` de 23 a 26, `critico` a partir de 27. Um navegador usa 10-15 processos.
 - O daemon do Thunar e os agentes GNOME ficam desligados por padrao.
 - Para exibir icones na area de trabalho: `--icons` (consome gvfs e tumbler).
-- Para elevar o limite, via PC com ADB:
-  ```bash
-  adb shell settings put global settings_enable_monitor_phantom_procs false
-  adb shell device_config put activity_manager max_phantom_processes 2147483647
-  ```
+- Se subir, feche abas e apps pesados; o `dextermux-status` mostra o top 5.
 
-## 6. Qualidade e resolucao
+## 7. Qualidade e resolucao
 
 noVNC (engrenagem) ou parametros na URL:
 
@@ -100,7 +114,7 @@ noVNC (engrenagem) ou parametros na URL:
 
 Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 
-## 7. Pendencias manuais (uma vez por instalacao)
+## 8. Pendencias manuais (uma vez por instalacao)
 
 1. Instalar o app **Termux:Boot** (F-Droid/GitHub) e abrir uma vez.
 2. Samsung: **Configuracoes -> Aplicativos -> Termux -> Bateria -> Sem restricoes**.
@@ -109,7 +123,7 @@ Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 5. Reservar o IP do celular no roteador.
 6. `passwd` para definir senha do usuario, se quiser.
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Sintoma | Causa provavel | Acao |
 |---------|----------------|------|
@@ -121,17 +135,19 @@ Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 | Aviso de certificado | certificado autoassinado | aceite uma vez ou instale o cert no cliente |
 | `wss` nao conecta | certificado nao aceito na pagina | abra `https://<ip>:6080/vnc.html` primeiro |
 | IP da LAN mudou | SANs antigas | `dextermux-tls renew` e `desktop` |
+| `cannot execute: required file not found` | binario glibc no Termux | use `dextermux-dev`/`dextermux-gui` |
+| App do Ubuntu sem janela | sessao grafica parada | `desktop` e tente de novo |
 | `library "libicuuc.so.79" not found` | pacotes desatualizados apos upgrade de soname | `pkg upgrade -y` |
 | SSH caiu apos `pkg upgrade` | openssh substituido | `pkill -x sshd; sshd` |
 | URL publica nao abre | tunel desligado ou caiu | `desktop` com `--tunnel` |
 
-## 9. Seguranca
+## 10. Seguranca
 
 - O tunel quick expoe o noVNC na internet; a unica barreira e a senha de 8 caracteres do VNC.
 - Para exposicao continua, migrar para named tunnel + Cloudflare Access (dominio proprio).
 - Nao reutilize a mesma senha do VNC em outros servicos.
 
-## 10. Referencias internas
+## 11. Referencias internas
 
 - `spec.md`: requisitos e criterios.
 - `plan.md`: decisoes e estrutura.
