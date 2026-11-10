@@ -101,7 +101,7 @@ O usuario quer trafego criptografado na rede local e um ambiente que nao seja mo
 - **FR-020**: O instalador DEVE instalar Ubuntu via `proot-distro` por padrao, com `curl`, `git` e `ca-certificates`, e permitir pular com `--no-ubuntu`.
 - **FR-021**: O sistema DEVE expor `dextermux-dev`, `dextermux-ubuntu`, `dextermux-gui` e um wrapper `opencode`, alem de atalhos no menu do XFCE.
 - **FR-022**: Apps graficos do Ubuntu DEVEM renderizar no Xvnc nativo via `--shared-tmp` e cookie X11 copiado, sem segundo desktop.
-- **FR-023**: O instalador DEVE permitir instalar Xubuntu completo em rootfs dedicado (`--xubuntu`) e alternar o desktop com `dextermux-desktop native|xubuntu`.
+- **FR-023**: O instalador DEVE permitir instalar Xubuntu em rootfs dedicado (`--xubuntu`, core por padrao; `--xubuntu=full` para o metapacote) e alternar o desktop com `dextermux-desktop native|xubuntu`.
 - **FR-024**: Resets DEVEM exigir `--confirm=APAGAR`, rodar apenas no Termux e nunca apagar `$HOME` quando invocado por pipe.
 
 ### Key Entities

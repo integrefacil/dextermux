@@ -105,7 +105,7 @@ $PREFIX/bin/dextermux-status
 17. **Ubuntu proot como runtime**: binarios glibc (opencode, SDKs) nao rodam no Termux. O instalador cria o rootfs com `proot-distro` e instala `curl`, `git` e `ca-certificates`; `--no-ubuntu` pula.
 18. **Ponte grafica sem segundo desktop**: `proot-distro --shared-tmp` expoe `$TMPDIR/.X11-unix/X1` em `/tmp`; o cookie `~/.Xauthority` e copiado para `/root/.Xauthority` a cada chamada. Testado com `xterm` no XFCE nativo.
 19. **Wrappers**: `dextermux-dev` detecta o opencode e cai para shell; `opencode` chama o `dextermux-dev`; `dextermux-gui` executa qualquer comando do Ubuntu no display `:1`. Atalhos em `~/.local/share/applications`.
-20. **Xubuntu em rootfs dedicado**: `proot-distro install -n xubuntu ubuntu` e `xubuntu-desktop` completo; o VNC roda dentro do proot no `:1` e o websockify do Termux continua servindo.
+20. **Xubuntu em rootfs dedicado**: `proot-distro install -n xubuntu ubuntu` e `xubuntu-core` + `xubuntu-default-settings` (visual sem apps extras); `--xubuntu=full` usa o metapacote. O VNC roda dentro do proot no `:1` e o websockify do Termux continua servindo.
 21. **Fallback de desktop**: `~/.dextermux/desktop` guarda `native|xubuntu`; se o Xvnc do proot nao subir em 20 s, o modo volta para `native`.
 22. **Reset com trava**: `--reset-proot`/`--reset-all` exigem `--confirm=APAGAR` e recusam execucao por pipe; `--reset-all` copia o script para `$TMPDIR` antes de apagar o `$HOME`.
 23. **Custo assumido do Xubuntu**: ~3 GB e ~25-30 processos ocioso, acima do alvo; fica experimental e com fallback.

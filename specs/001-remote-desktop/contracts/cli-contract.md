@@ -23,7 +23,7 @@ depende de terminal.
 | `--tls` / `--no-tls` | `--tls` | HTTPS autoassinado na LAN para o noVNC |
 | `--icons` / `--no-icons` | `--no-icons` | icones na area de trabalho (desligado evita gvfs/tumbler) |
 | `--ubuntu` / `--no-ubuntu` | `--ubuntu` | instala Ubuntu via proot-distro para ferramentas glibc |
-| `--xubuntu` | desligado | instala Xubuntu completo em rootfs dedicado e ativa o modo |
+| `--xubuntu[=core\|full]` | desligado | Xubuntu em rootfs dedicado; `core` (padrao) usa `xubuntu-core` + `xubuntu-default-settings` |
 | `--desktop=MODE` | `native` | `native` (XFCE) ou `xubuntu` |
 | `--reset-proot` | desligado | apaga os rootfs do proot; exige `--confirm=APAGAR` |
 | `--reset-all` | desligado | apaga rootfs e `$HOME`; exige `--confirm=APAGAR` e script em arquivo |
@@ -126,7 +126,7 @@ depende de terminal.
 
 - Rootfs: `$PREFIX/var/lib/proot-distro/containers/xubuntu/rootfs`, criado com
   `proot-distro install -n xubuntu ubuntu`.
-- Pacotes dentro: `xubuntu-desktop`, `tigervnc-standalone-server`, `dbus-x11`.
+- Pacotes dentro: `xubuntu-core` + `xubuntu-default-settings` (ou `xubuntu-desktop` com `--xubuntu=full`), mais `tigervnc-standalone-server` e `dbus-x11`.
 - Sessao: `Xvnc :1` rodando dentro do proot, com `/root/.vnc/xstartup` executando `startxfce4`.
 - Senha: `~/.vnc/passwd` e copiado para `/root/.vnc/passwd`.
 - Fallback: se o `Xvnc` nao subir em 20 s, o modo volta para `native`.

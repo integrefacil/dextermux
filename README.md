@@ -67,7 +67,7 @@ conecta por `wss`. O IP da LAN entra nas SANs e o certificado e regenerado quand
 | `--tls` / `--no-tls` | HTTPS autoassinado na LAN (default ligado) |
 | `--icons` / `--no-icons` | icones na area de trabalho (default desligado, economiza gvfs/tumbler) |
 | `--ubuntu` / `--no-ubuntu` | Ubuntu proot para ferramentas glibc (default ligado) |
-| `--xubuntu` | instala Xubuntu completo em rootfs dedicado e usa como desktop |
+| `--xubuntu[=core\|full]` | Xubuntu em rootfs dedicado; `core` por padrao, `full` para o metapacote completo |
 | `--desktop=MODE` | `native` (XFCE leve) ou `xubuntu` |
 | `--reset-proot` | apaga os rootfs do proot (exige `--confirm=APAGAR`) |
 | `--reset-all` | apaga rootfs e o `$HOME` do Termux (exige `--confirm=APAGAR`) |
@@ -118,8 +118,9 @@ para `/root/.Xauthority`. Nao existe um segundo desktop.
 
 ## Xubuntu no proot (experimental)
 
-`--xubuntu` cria um rootfs dedicado `xubuntu`, instala `xubuntu-desktop` completo, `tigervnc` e
-`dbus-x11`, e passa a usar esse desktop. O XFCE nativo fica como fallback.
+`--xubuntu` cria um rootfs dedicado `xubuntu`, instala `xubuntu-core` + `xubuntu-default-settings`
+(visual do Xubuntu sem LibreOffice, Thunderbird, snapd e cia), `tigervnc` e `dbus-x11`, e passa a
+usar esse desktop. Para o metapacote completo: `--xubuntu=full`.
 
 ```bash
 bash setup.sh --xubuntu              # instala e ativa
@@ -127,10 +128,10 @@ dextermux-desktop native             # volta ao XFCE leve
 dextermux-desktop xubuntu            # retorna ao Xubuntu
 ```
 
-- Disco: ~3 GB (rootfs + desktop completo).
-- Tempo: 20-40 minutos no aparelho.
-- **Risco**: Xubuntu completo sobe ~25-30 processos ocioso. Sem ADB, qualquer navegador pode
-  disparar o signal 9 do Android. Use com essa expectativa.
+- Disco: ~1,5 GB (core) ou ~3 GB (full).
+- Tempo: 10-20 minutos (core) ou 20-40 (full).
+- **Risco**: o core fica em ~18-22 processos ocioso; o full chega a ~25-30. Sem ADB, uso com
+  navegador pode disparar o signal 9 do Android.
 - Se o Xubuntu nao subir em 20 segundos, o script cai automaticamente para o XFCE nativo.
 
 ## Reset (destrutivo)
