@@ -37,8 +37,9 @@
 
 set -eu
 export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="3.0.0"
+DEXTERMUX_VERSION="3.0.1"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -51,7 +52,7 @@ VNC_PASS="${VNC_PASS:-}"
 
 MODE="install"
 DRY_RUN=0
-TOTAL_STEPS=12
+TOTAL_STEPS=13
 STEP_NO=0
 LOG="$H/dextermux-install.log"
 
@@ -254,8 +255,12 @@ install_pkgs() {
         return 0
     fi
     info "instalando: $missing"
+    # --force-confold evita prompt de conffile (ex: openssl.cnf) com stdin fechado
     # shellcheck disable=SC2086
-    pkg install -y $missing 2>&1 | tee -a "$LOG"
+    pkg install -y \
+        -o Dpkg::Options::=--force-confdef \
+        -o Dpkg::Options::=--force-confold \
+        $missing </dev/null 2>&1 | tee -a "$LOG"
     if [ "${PIPESTATUS[0]}" -ne 0 ]; then
         die "falha ao instalar: $missing"
     fi
@@ -662,6 +667,14 @@ run_packages() {
     step "Repositorio x11"
     install_pkgs x11-repo
     pkg update -y 2>&1 | tee -a "$LOG" || warn "pkg update retornou erro; seguindo"
+
+    step "Pacotes pendentes"
+    if [ -n "$(dpkg --audit 2>/dev/null)" ]; then
+        info "corrigindo pacotes pendentes"
+        dpkg --force-confdef --force-confold --configure -a 2>&1 | tee -a "$LOG" || true
+    else
+        info "nenhum pacote pendente"
+    fi
 
     step "Pacotes base"
     # shellcheck disable=SC2086
