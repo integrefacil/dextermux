@@ -39,7 +39,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="3.2.0"
+DEXTERMUX_VERSION="3.3.0"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -300,6 +300,77 @@ set_default_terminal() {
     warn "nao consegui definir o terminal padrao; rode: dextermux-status"
 }
 
+write_session_config() {
+    local dir="$H/.config/xfce4/xfconf/xfce-perchannel-xml" f
+    mkdir -p "$dir"
+    cat >"$dir/xfce4-session.xml" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+
+<channel name="xfce4-session" version="1.0">
+  <property name="general" type="empty">
+    <property name="FailsafeSessionName" type="string" value="Failsafe"/>
+    <property name="LockCommand" type="string" value=""/>
+    <property name="TerminalEmulator" type="string" value="xfce4-terminal"/>
+    <property name="SaveOnExit" type="bool" value="false"/>
+  </property>
+  <property name="sessions" type="empty">
+    <property name="Failsafe" type="empty">
+      <property name="IsFailsafe" type="bool" value="true"/>
+      <property name="Count" type="int" value="4"/>
+      <property name="Client0_Command" type="array">
+        <value type="string" value="xfwm4"/>
+      </property>
+      <property name="Client0_Priority" type="int" value="15"/>
+      <property name="Client0_PerScreen" type="bool" value="false"/>
+      <property name="Client1_Command" type="array">
+        <value type="string" value="xfsettingsd"/>
+      </property>
+      <property name="Client1_Priority" type="int" value="20"/>
+      <property name="Client1_PerScreen" type="bool" value="false"/>
+      <property name="Client2_Command" type="array">
+        <value type="string" value="xfce4-panel"/>
+      </property>
+      <property name="Client2_Priority" type="int" value="25"/>
+      <property name="Client2_PerScreen" type="bool" value="false"/>
+      <property name="Client3_Command" type="array">
+        <value type="string" value="xfdesktop"/>
+      </property>
+      <property name="Client3_Priority" type="int" value="30"/>
+      <property name="Client3_PerScreen" type="bool" value="false"/>
+    </property>
+    <property name="FailsafeWayland" type="empty">
+      <property name="IsFailsafe" type="bool" value="true"/>
+      <property name="Count" type="int" value="3"/>
+      <property name="Client0_Command" type="array">
+        <value type="string" value="xfsettingsd"/>
+      </property>
+      <property name="Client0_Priority" type="int" value="15"/>
+      <property name="Client0_PerScreen" type="bool" value="false"/>
+      <property name="Client1_Command" type="array">
+        <value type="string" value="xfce4-panel"/>
+      </property>
+      <property name="Client1_Priority" type="int" value="15"/>
+      <property name="Client1_PerScreen" type="bool" value="false"/>
+      <property name="Client2_Command" type="array">
+        <value type="string" value="xfdesktop"/>
+      </property>
+      <property name="Client2_Priority" type="int" value="15"/>
+      <property name="Client2_PerScreen" type="bool" value="false"/>
+    </property>
+  </property>
+</channel>
+EOF
+    mkdir -p "$H/.config/autostart"
+    for f in at-spi-dbus-bus gnome-keyring-pkcs11 gnome-keyring-secrets; do
+        cat >"$H/.config/autostart/$f.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$f
+Hidden=true
+EOF
+    done
+}
+
 write_xstartup() {
     mkdir -p "$H/.vnc"
     cat >"$H/.vnc/xstartup" <<'EOF'
@@ -315,8 +386,6 @@ export GTK_A11Y=none
 if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && command -v dbus-launch >/dev/null 2>&1; then
     eval "$(dbus-launch --sh-syntax --exit-with-session)" 2>/dev/null || true
 fi
-
-( sleep 8; xfconf-query -c xfce4-session -p /general/TerminalEmulator -s xfce4-terminal >/dev/null 2>&1 ) &
 
 exec startxfce4
 EOF
@@ -845,10 +914,11 @@ run_install() {
     run_packages
 
     step "websockify"
-    if command -v websockify >/dev/null 2>&1; then
+    if command -v websockify >/dev/null 2>&1 && websockify --help >/dev/null 2>&1; then
         info "websockify ja instalado"
     else
-        pip3 install --no-deps -q websockify 2>&1 | tee -a "$LOG"
+        info "instalando websockify para $(python3 --version 2>&1)"
+        pip3 install --force-reinstall --no-deps -q websockify 2>&1 | tee -a "$LOG"
         if [ "${PIPESTATUS[0]}" -ne 0 ]; then
             die "falha ao instalar websockify"
         fi
@@ -866,6 +936,8 @@ run_install() {
     step "Configuracoes"
     write_modes
     write_xstartup
+    write_session_config
+    write_session_config
 
     step "Scripts de operacao"
     write_start_desktop
@@ -900,7 +972,7 @@ run_install() {
 }
 
 repair_only() {
-    TOTAL_STEPS=8
+    TOTAL_STEPS=9
     : >"$LOG"
     printf 'dextermux %s - reparo %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
     step "Limpeza de versoes antigas"
@@ -921,6 +993,12 @@ repair_only() {
     step "Certificado TLS"
     if [ "$TLS" = "1" ]; then
         "$H/.dextermux/tls.sh" ensure || warn "falha ao gerar o certificado"
+    fi
+    step "websockify"
+    if command -v websockify >/dev/null 2>&1 && websockify --help >/dev/null 2>&1; then
+        info "websockify ok"
+    else
+        pip3 install --force-reinstall --no-deps -q websockify 2>&1 | tee -a "$LOG" || warn "falha ao reinstalar websockify"
     fi
     step "Reiniciando servicos"
     vncserver -kill :1 >/dev/null 2>&1 || true
