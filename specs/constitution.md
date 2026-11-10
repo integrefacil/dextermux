@@ -37,6 +37,7 @@ O ambiente DEVE permanecer abaixo de 32 processos, teto imposto pelo phantom pro
 - Plataforma alvo: Termux aarch64, Android 13+ (validado em Samsung Galaxy A15, Android 15).
 - Pacotes base: `x11-repo`, `tigervnc`, `openssh`, `openssl-tool`, `python`, `net-tools`, `cloudflared`, `curl`, `tar`, `dbus`.
 - Sessao unica: XFCE4 minimo (`xfwm4`, `xfce4-panel`, `xfce4-session`, `xfce4-settings`, `xfconf`, `xfdesktop`, `thunar`, `xfce4-terminal`, `ttf-dejavu`).
+- Runtime glibc: Ubuntu via `proot-distro` (padrao), com ponte grafica para o Xvnc nativo. `--no-ubuntu` desliga.
 - Portas: 8022 (sshd), 5901 (VNC), 6080 (noVNC/websocket em HTTPS autoassinado).
 - Senha do VNC Auth: ate 8 caracteres.
 - URL do quick tunnel do Cloudflare e efemera e muda a cada reinicio.
@@ -54,7 +55,7 @@ Esta constitution prevalece sobre preferencias pontuais. Emendas exigem:
 2. atualizacao de `spec.md`/`tasks.md` quando mudar comportamento observavel;
 3. validacao no dispositivo antes de considerar concluido.
 
-**Version**: 2.0.0 | **Ratified**: 2026-11-09 | **Last Amended**: 2026-11-10
+**Version**: 2.1.0 | **Ratified**: 2026-11-09 | **Last Amended**: 2026-11-10
 
 ## Emendas
 
@@ -62,3 +63,4 @@ Esta constitution prevalece sobre preferencias pontuais. Emendas exigem:
 - **1.2.0 (2026-11-09)**: preset restilizado (rofi, plank, picom, Arc, apps GNOME) removido a pedido do usuario; `xfce` passa a ser o XFCE padrao e `cinnamon` vira a sessao padrao.
 - **1.3.0 (2026-11-10)**: HTTPS autoassinado na LAN para o noVNC, com `dextermux-tls` para gerar, renovar e alternar o modo sem reinstalar.
 - **2.0.0 (2026-11-10)**: escopo reduzido a XFCE4 minimo; Cinnamon, MATE, presets, perfis de dev e `dextermux-session` removidos. Principio II volta a exigir instalador sem prompts. Novo Principio IX (Process Budget) para o limite de 32 processos do Android. Tunel desligado por padrao e `.bashrc` sem autostart.
+- **2.1.0 (2026-11-10)**: Ubuntu via proot como runtime glibc por padrao, com ponte grafica para o XFCE nativo (`dextermux-dev`, `dextermux-gui`).

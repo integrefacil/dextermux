@@ -44,6 +44,9 @@ conecta por `wss`. O IP da LAN entra nas SANs e o certificado e regenerado quand
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
 | `url` | mostra IP, portas, TLS e estado |
+| `dextermux-dev` | abre o opencode no Ubuntu, ou um shell se ele nao existir |
+| `dextermux-ubuntu` | shell no Ubuntu com o XFCE acessivel |
+| `dextermux-gui APP` | roda um app grafico do Ubuntu no XFCE nativo |
 | `dextermux-ssh` | usuario, IP, porta, comando e chaves autorizadas |
 | `dextermux-ssh add "<chave>"` | autoriza uma chave publica sem editar arquivo |
 | `dextermux-status` | processos, top 5 por memoria, TLS e tunel |
@@ -62,6 +65,7 @@ conecta por `wss`. O IP da LAN entra nas SANs e o certificado e regenerado quand
 | `--tunnel` / `--no-tunnel` | liga ou desliga o Cloudflare (default desligado) |
 | `--tls` / `--no-tls` | HTTPS autoassinado na LAN (default ligado) |
 | `--icons` / `--no-icons` | icones na area de trabalho (default desligado, economiza gvfs/tumbler) |
+| `--ubuntu` / `--no-ubuntu` | Ubuntu proot para ferramentas glibc (default ligado) |
 | `--repair` | nao instala pacotes; regrava configs e reinicia |
 | `--dry-run` | mostra o plano e sai |
 | `--version` | versao do instalador |
@@ -83,6 +87,29 @@ curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash -s -- --tunn
 bash setup.sh --repair --no-tls
 ```
 
+## Ferramentas glibc (Ubuntu proot)
+
+O Termux usa Bionic e nao executa binarios glibc, como o opencode. O instalador cria um Ubuntu
+via `proot-distro` (por padrao) e integra com o desktop:
+
+```bash
+dextermux-dev                 # opencode (ou shell, se ainda nao instalado)
+dextermux-ubuntu              # shell no Ubuntu
+dextermux-gui libreoffice     # app grafico do Ubuntu no XFCE nativo
+```
+
+Dentro do Ubuntu, instale o que precisar com `apt`. A ponte grafica usa o mesmo Xvnc do XFCE:
+o socket X11 em `$TMPDIR/.X11-unix/X1` e compartilhado com `--shared-tmp`, e o cookie e copiado
+para `/root/.Xauthority`. Nao existe um segundo desktop.
+
+- Disco: ~500 MB para o rootfs; `apt` adiciona o que voce instalar.
+- O `opencode` fica em `/root/.opencode/bin` dentro do Ubuntu; o wrapper `opencode` do Termux
+  chama o `dextermux-dev`.
+- Apps que exigem systemd, polkit ou GPU dedicada nao funcionam.
+- Para pular o Ubuntu: `--no-ubuntu`.
+- O binario antigo em `~/.opencode/bin` (glibc, nao executa no Termux) pode ser removido:
+  `rm -rf ~/.opencode`.
+
 ## Limite de 32 processos (Android 12+)
 
 O Android 12 introduziu o **phantom process killer**: processos criados por apps fora do ciclo de
@@ -98,13 +125,8 @@ dextermux-status
 
 Faixas: ate 22 `ok`, 23-26 `atencao`, 27+ `critico`. A contagem ignora utilitarios transitorios (`ps`, `grep`, `wc`).
 
-Para elevar o limite (opcional, via PC com ADB, sem root):
-
-```bash
-adb shell settings put global settings_enable_monitor_phantom_procs false
-adb shell device_config put activity_manager max_phantom_processes 2147483647
-adb shell dumpsys activity settings | grep max_phantom_processes
-```
+Um navegador sozinho usa 10-15 processos (um por aba/renderer). Se a contagem subir, feche abas e
+apps pesados; o `dextermux-status` mostra a contagem e o top 5.
 
 Se o SSH cair depois de um `pkg upgrade` (o openssh e substituido), rode no Termux:
 

@@ -178,8 +178,12 @@
     <section>
       <div class="note">
         <b>Limite de 32 processos.</b> O Android 12+ mata o app acima de 32 processos criados por ele.
-        Use <code class="inline">dextermux-status</code> para medir; o README traz os comandos ADB que
-        elevam o limite.
+        Use <code class="inline">dextermux-status</code> para medir e feche abas/apps pesados quando subir.
+      </div>
+      <div class="note" style="margin-top:16px">
+        <b>Ferramentas glibc.</b> O instalador cria um Ubuntu via <code class="inline">proot-distro</code>
+        com <code class="inline">dextermux-dev</code> (opencode ou shell), <code class="inline">dextermux-ubuntu</code>
+        e <code class="inline">dextermux-gui</code> para abrir apps do Ubuntu no XFCE nativo.
       </div>
       <div class="note" style="margin-top:16px">
         <b>Nao usa xrdp.</b> O pacote <code class="inline">xrdp 0.10.6.1</code> do Termux tem bug de autenticacao

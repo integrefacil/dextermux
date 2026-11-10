@@ -6,7 +6,7 @@
 
 ## Summary
 
-Um unico `setup.sh`, executavel por `curl -fsSL <url> | bash`, instala e configura um XFCE4 minimo acessivel por VNC local, noVNC com HTTPS autoassinado na LAN e sshd, com tunel Cloudflare opcional, banner de URLs, comandos `desktop`/`url`/`dextermux-tls`/`dextermux-status` e autostart no boot. O instalador nao faz perguntas. O desenho mira ~11 processos ociosos para conviver com o phantom process killer do Android 12+, que mata o app acima de 32 processos.
+Um unico `setup.sh`, executavel por `curl -fsSL <url> | bash`, instala e configura um XFCE4 minimo acessivel por VNC local, noVNC com HTTPS autoassinado na LAN e sshd, com tunel Cloudflare opcional, banner de URLs, comandos `desktop`/`url`/`dextermux-tls`/`dextermux-status` e autostart no boot. O instalador nao faz perguntas. O desenho mira 12-16 processos ociosos para conviver com o phantom process killer do Android 12+, que mata o app acima de 32 processos. Um Ubuntu via proot, por padrao, cobre binarios glibc com ponte grafica para o XFCE nativo.
 
 ## Technical Context
 
@@ -76,7 +76,10 @@ $PREFIX/bin/dextermux-status
 | `start-desktop.sh` | `termux-wake-lock`, sshd, limpar locks, Xvnc, websockify (TLS), cloudflared opcional, auto-correcao de modo |
 | `show-access.sh` | IP por `ifconfig`, esquema TLS, estado dos servicos |
 | `dextermux-tls` | gerar, renovar, ligar e desligar o certificado da LAN |
-| `dextermux-status` | contagem de processos, top 5, TLS, tunel e comandos ADB |
+| `dextermux-status` | contagem de processos, top 5, TLS, tunel e Ubuntu |
+| `dextermux-dev` | opencode no Ubuntu ou shell |
+| `dextermux-ubuntu` | shell no Ubuntu |
+| `dextermux-gui` | app grafico do Ubuntu no XFCE |
 | `~/.vnc/xstartup` | dbus e `startxfce4` com acessibilidade desligada |
 | `~/.bashrc` | apenas o banner (sem autostart) |
 | `~/.termux/boot/start-services.sh` | chamar `start-desktop.sh` no boot |
@@ -98,7 +101,10 @@ $PREFIX/bin/dextermux-status
 13. **Tunel com origem TLS**: `cloudflared --url https://localhost:6080 --no-tls-verify` para nao quebrar quando o websockify esta em HTTPS.
 14. **Porta 6080**: portas abaixo de 1024 exigem root no Android.
 15. **Tamanhos medidos**: ~684 MB instalados (161 pacotes) para base + XFCE minimo, pela resolucao real de dependencias nos indices `termux-main` e `termux-x11`.
-16. **Phantom process killer**: Android 12+ mata o app acima de 32 processos. O status mede, avisa em 24 e marca critico em 30; a documentacao traz os comandos ADB para elevar o limite.
+16. **Phantom process killer**: Android 12+ mata o app acima de 32 processos. O status mede, avisa em 23 e marca critico em 27; navegador e apps pesados tambem contam.
+17. **Ubuntu proot como runtime**: binarios glibc (opencode, SDKs) nao rodam no Termux. O instalador cria o rootfs com `proot-distro` e instala `curl`, `git` e `ca-certificates`; `--no-ubuntu` pula.
+18. **Ponte grafica sem segundo desktop**: `proot-distro --shared-tmp` expoe `$TMPDIR/.X11-unix/X1` em `/tmp`; o cookie `~/.Xauthority` e copiado para `/root/.Xauthority` a cada chamada. Testado com `xterm` no XFCE nativo.
+19. **Wrappers**: `dextermux-dev` detecta o opencode e cai para shell; `opencode` chama o `dextermux-dev`; `dextermux-gui` executa qualquer comando do Ubuntu no display `:1`. Atalhos em `~/.local/share/applications`.
 
 ## Complexity Tracking
 

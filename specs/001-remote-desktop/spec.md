@@ -98,11 +98,14 @@ O usuario quer trafego criptografado na rede local e um ambiente que nao seja mo
 - **FR-017**: O sistema DEVE registrar log completo da execucao em `~/dextermux-install.log`.
 - **FR-018**: O `.bashrc` DEVE apenas imprimir o banner, sem iniciar servicos.
 - **FR-019**: O sistema DEVE exibir usuario, IP, porta 8022 e comando SSH no banner e no resumo, e permitir autorizar chaves depois da instalacao via `dextermux-ssh add`.
+- **FR-020**: O instalador DEVE instalar Ubuntu via `proot-distro` por padrao, com `curl`, `git` e `ca-certificates`, e permitir pular com `--no-ubuntu`.
+- **FR-021**: O sistema DEVE expor `dextermux-dev`, `dextermux-ubuntu`, `dextermux-gui` e um wrapper `opencode`, alem de atalhos no menu do XFCE.
+- **FR-022**: Apps graficos do Ubuntu DEVEM renderizar no Xvnc nativo via `--shared-tmp` e cookie X11 copiado, sem segundo desktop.
 
 ### Key Entities
 
 - **Servicos remotos**: VNC (5901), noVNC (6080, HTTPS), sshd (8022), tunel publico opcional.
-- **Configuracao persistida**: `~/.vnc/xstartup`, `~/.vnc/passwd`, `~/start-desktop.sh`, `~/show-access.sh`, `~/.dextermux/tls.sh`, `~/.dextermux/status.sh`, `~/.dextermux/tunnel`, `~/.dextermux/tls/{server.crt,server.key,mode,sans}`, `~/.termux/boot/start-services.sh`, `~/tunnel-url.txt`.
+- **Configuracao persistida**: `~/.vnc/xstartup`, `~/.vnc/passwd`, `~/start-desktop.sh`, `~/show-access.sh`, `~/.dextermux/{tls.sh,status.sh,ssh.sh,dev.sh,ubuntu.sh,gui.sh}`, `~/.dextermux/tunnel`, `~/.dextermux/tls/{server.crt,server.key,mode,sans}`, `~/.termux/boot/start-services.sh`, `~/tunnel-url.txt` e o rootfs em `$PREFIX/var/lib/proot-distro/containers/ubuntu/rootfs`.
 - **Estado de execucao**: processos `Xvnc`, `websockify`, `cloudflared`; logs em `$TMPDIR/ws-6080.log`, `$TMPDIR/cf.log`, `~/.vnc/localhost:1.log` e `~/dextermux-install.log`.
 
 ## Success Criteria
@@ -117,6 +120,7 @@ O usuario quer trafego criptografado na rede local e um ambiente que nao seja mo
 - **SC-006**: `curl -k https://<ip>:6080/vnc.html` responde 200 e a mesma porta recusa HTTP em texto claro.
 - **SC-007**: O ambiente ocioso fica com 12-16 processos, abaixo do teto de 23 usado pelo status.
 - **SC-008**: `dextermux-status` mostra a contagem e o top 5 em menos de 2 segundos.
+- **SC-009**: `dextermux-dev` abre o opencode dentro do Ubuntu; `dextermux-gui xterm` abre uma janela no XFCE nativo.
 
 ## Assumptions
 

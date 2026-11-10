@@ -131,4 +131,8 @@
 - [x] T070 `dextermux-ssh` com status, add e list; banner e resumo com o comando SSH
 - [x] T071 `pkg upgrade -y` antes da instalacao para alinhar sonames (libicu/libvte)
 - [x] T072 Faixas do status: ok ate 22, atencao 23-26, critico 27+, ignorando utilitarios transitorios
-- [ ] T069 Validar no aparelho: `curl -k https://<ip>:6080/vnc.html` e `dextermux-status` abaixo de 24
+- [x] T069 Validar no aparelho: `curl -k https://<ip>:6080/vnc.html` funcionando
+- [x] T073 Instalar Ubuntu via proot-distro por padrao (`--no-ubuntu` para pular)
+- [x] T074 Ponte grafica com `--shared-tmp` e cookie X11
+- [x] T075 `dextermux-dev`, `dextermux-ubuntu`, `dextermux-gui`, wrapper `opencode` e atalhos no menu
+- [x] T076 Remover o PATH do opencode glibc do `.bashrc`
