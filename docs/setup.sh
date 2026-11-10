@@ -39,7 +39,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="3.0.2"
+DEXTERMUX_VERSION="3.0.3"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -284,11 +284,18 @@ cleanup_legacy() {
 
 set_default_terminal() {
     command -v xfconf-query >/dev/null 2>&1 || return 0
-    DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator \
-        -s xfce4-terminal 2>/dev/null \
-        || DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator \
-            -n -t string -s xfce4-terminal 2>/dev/null \
-        || true
+    for _ in 1 2 3 4 5 6 7 8; do
+        if DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator \
+            -s xfce4-terminal 2>/dev/null; then
+            return 0
+        fi
+        if DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator \
+            -n -t string -s xfce4-terminal 2>/dev/null; then
+            return 0
+        fi
+        sleep 1
+    done
+    warn "nao consegui definir o terminal padrao; rode: dextermux-status"
 }
 
 write_xstartup() {
@@ -306,6 +313,8 @@ export GTK_A11Y=none
 if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && command -v dbus-launch >/dev/null 2>&1; then
     eval "$(dbus-launch --sh-syntax --exit-with-session)" 2>/dev/null || true
 fi
+
+( sleep 8; xfconf-query -c xfce4-session -p /general/TerminalEmulator -s xfce4-terminal >/dev/null 2>&1 ) &
 
 exec startxfce4
 EOF
@@ -592,6 +601,9 @@ echo "Desktop:    XFCE4"
 if [ "$TLS" = "1" ]; then echo "TLS:        https"; else echo "TLS:        http"; fi
 if [ "$TUNNEL" = "1" ]; then echo "Tunel:      ligado"; else echo "Tunel:      desligado"; fi
 if pgrep -f "[X]vnc :1" >/dev/null; then echo "VNC:        ativo"; else echo "VNC:        parado"; fi
+TERM_EMU=$(DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator 2>/dev/null || echo "?")
+TERM_BIN=$(command -v xfce4-terminal 2>/dev/null || echo "ausente")
+echo "Terminal:   $TERM_EMU ($TERM_BIN)"
 if pgrep -f "[w]ebsockify" >/dev/null; then echo "noVNC:      ativo"; else echo "noVNC:      parado"; fi
 echo "Processos:  $N / limite Android 32 ($(verdict "$N"))"
 echo ""
