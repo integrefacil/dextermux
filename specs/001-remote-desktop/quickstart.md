@@ -51,14 +51,15 @@ Apos abrir uma sessao nova no Termux, o banner mostra:
 === Acesso remoto ===
 Sessao:       cinnamon
 VNC local:    vnc://192.168.0.x:5901
-noVNC local:  http://192.168.0.x:6080/vnc.html
+noVNC local:  https://192.168.0.x:6080/vnc.html
 Publico:      https://xxxx.trycloudflare.com/vnc.html
 ======================
 ```
 
 - Remmina (LAN): protocolo **VNC**, `192.168.0.x:5901`, senha do `VNC_PASS`.
-- Navegador (LAN): `http://192.168.0.x:6080/vnc.html`.
+- Navegador (LAN): `https://192.168.0.x:6080/vnc.html` (aceite o certificado autoassinado no primeiro acesso).
 - Navegador (externo): URL do tunel + `/vnc.html`.
+- Para desligar o HTTPS local: `dextermux-tls disable` e `desktop`.
 
 ## 4. Comparar sessoes
 
@@ -73,7 +74,7 @@ dextermux-session set mate      # troca a padrao e reinicia o :1
 dextermux-session remove mate   # remove os pacotes exclusivos do MATE
 ```
 
-Enquanto o `:2` estiver ativo, abra `http://<ip>:6081/vnc.html` em outra aba e compare com a `6080`. Para uma terceira sessao use `dextermux-session try xfce 3` (noVNC 6082). Se o display ja estiver ativo com outra sessao, o script reinicia esse display com a sessao pedida.
+Enquanto o `:2` estiver ativo, abra `https://<ip>:6081/vnc.html` em outra aba e compare com a `6080`. Para uma terceira sessao use `dextermux-session try xfce 3` (noVNC 6082). Se o display ja estiver ativo com outra sessao, o script reinicia esse display com a sessao pedida.
 Se uma sessao experimental morrer em menos de 15 segundos, o `xstartup` cai para `xfce` e registra
 o motivo em `$TMPDIR/session.log`.
 
@@ -83,6 +84,9 @@ o motivo em `$TMPDIR/session.log`.
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e cloudflared (idempotente) |
 | `url` | imprime o banner com as URLs e o estado atual |
+| `dextermux-tls show` | mostra certificado, SANs e validade |
+| `dextermux-tls renew` | regenera o certificado da LAN |
+| `dextermux-tls disable` | volta a LAN para HTTP |
 | `vncserver -kill :1` | encerra a sessao VNC principal |
 | `pkill -x cloudflared` | derruba o tunel atual |
 | `tail -f $TMPDIR/cf.log` | log do tunel |
@@ -118,6 +122,9 @@ Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 | `Address already in use` na 8022 | sshd zumbi | reiniciar o Termux ou `pkill -x sshd; desktop` |
 | URL publica nao abre | tunnel caiu / URL mudou | `url` e `pkill -x cloudflared; desktop` |
 | Sessao caiu e voltou para XFCE | sessao experimental falhou | `cat $TMPDIR/session.log` |
+| Aviso de certificado no navegador | certificado autoassinado | aceite uma vez, ou instale `~/.dextermux/tls/server.crt` no cliente |
+| `wss` nao conecta | certificado nao aceito na pagina HTTPS | abra `https://<ip>:6080/vnc.html` primeiro e aceite |
+| IP da LAN mudou | SANs antigas | `dextermux-tls renew` e `desktop` |
 | Texto borrado | compressao alta | Quality 9 / Compression 0 no noVNC |
 | Resolucao nao acompanha | Remote Resize desligado | ativar em Scaling Mode |
 

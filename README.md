@@ -36,9 +36,14 @@ MATE ainda nao foi validado no aparelho. O `~/.vnc/xstartup` detecta sessao que 
 ## Acesso
 
 - Remmina/VNC: `vnc://<ip-do-celular>:5901`
-- Navegador local: `http://<ip-do-celular>:6080/vnc.html`
+- Navegador local: `https://<ip-do-celular>:6080/vnc.html`
 - Navegador externo: `<url-do-tunel>/vnc.html`
-- Sessao de teste em paralelo: `http://<ip-do-celular>:6081/vnc.html`
+- Sessao de teste em paralelo: `https://<ip-do-celular>:6081/vnc.html`
+
+A porta 6080 usa HTTPS com certificado autoassinado gerado no aparelho. No primeiro acesso o
+navegador mostra um aviso: aceite o certificado e o noVNC conecta por `wss`. O IP entra nas SANs
+automaticamente e o certificado e regenerado quando o IP da LAN muda. Para desligar, use
+`dextermux-tls disable` e rode `desktop`.
 
 ## Comandos
 
@@ -53,6 +58,9 @@ MATE ainda nao foi validado no aparelho. O `~/.vnc/xstartup` detecta sessao que 
 | `dextermux-session stop` | encerra o display `:2` |
 | `dextermux-session stop 3` | encerra o display `:3` |
 | `dextermux-session remove cinnamon` | remove os pacotes exclusivos da sessao (`xfce`, `cinnamon` ou `mate`) |
+| `dextermux-tls show` | mostra o certificado, as SANs e a validade |
+| `dextermux-tls renew` | regenera o certificado da LAN |
+| `dextermux-tls enable` / `disable` | liga ou desliga o HTTPS local |
 
 ## Flags do instalador
 
@@ -65,6 +73,7 @@ MATE ainda nao foi validado no aparelho. O `~/.vnc/xstartup` detecta sessao que 
 | `--password=PASS` | senha do VNC (max. 8 caracteres) |
 | `--ssh-pubkey=KEY` | chave publica para `authorized_keys` |
 | `--tunnel` / `--no-tunnel` | liga ou desliga o Cloudflare (default ligado) |
+| `--tls` / `--no-tls` | HTTPS autoassinado na LAN (default ligado) |
 | `--repair` | nao instala pacotes, apenas regrava configs e reinicia |
 | `--dry-run` | mostra o plano e sai sem alterar nada |
 | `--list` | lista presets, tamanhos e perfis |

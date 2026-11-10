@@ -89,6 +89,11 @@
 - [x] T053 Validar Cinnamon no aparelho (aprovado pelo usuario)
 - [ ] T054 Validar MATE no aparelho e promover ou remover o preset
 - [x] T055 Trocar o padrao para `cinnamon` e remover o preset restilizado
+- [x] T056 Gerar certificado autoassinado com `openssl` e SANs do IP da LAN
+- [x] T057 Subir `websockify` com `--cert`, `--key` e `--ssl-only`
+- [x] T058 Apontar o tunel para `https://localhost:6080 --no-tls-verify`
+- [x] T059 Criar `dextermux-tls` (`ensure`, `renew`, `enable`, `disable`, `mode`, `show`)
+- [x] T060 Atualizar banner, `url`, README, quickstart, contrato, spec, plano e pagina
 - [x] T035 `specs/001-remote-desktop/quickstart.md`
 - [x] T036 `specs/001-remote-desktop/contracts/cli-contract.md`
 

@@ -122,11 +122,13 @@ O usuario quer instalar mais de uma sessao, testar cada uma e depois manter apen
 - **FR-016**: O preset `xfce` DEVE instalar apenas `xfce4` e `xfdesktop`, sem tema, dock, compositor ou apps extras, e `cinnamon` DEVE ser a sessao padrao.
 - **FR-017**: O sistema DEVE registrar falha de sessao experimental em log e cair automaticamente para `xfce`.
 - **FR-018**: O instalador DEVE gravar log completo da execucao em `~/dextermux-install.log`.
+- **FR-019**: O sistema DEVE servir o noVNC por HTTPS com certificado autoassinado na LAN, incluindo o IP atual nas SANs, e regenerar o certificado quando o IP mudar.
+- **FR-020**: O sistema DEVE permitir ligar, desligar e renovar o HTTPS local sem reinstalar, mantendo o tunel publico funcionando nos dois modos.
 
 ### Key Entities
 
 - **Servicos remotos**: VNC (5901), noVNC (6080), sshd (8022), tunel publico, sessao de teste (5902/6081).
-- **Configuracao persistida**: `~/.vnc/xstartup`, `~/.vnc/passwd`, `~/start-desktop.sh`, `~/show-access.sh`, `~/.termux/boot/start-services.sh`, `~/tunnel-url.txt`, `~/.dextermux/session`, `~/.dextermux/session.<display>`, `~/.dextermux/running.<display>`, `~/.dextermux/session-manager.sh`.
+- **Configuracao persistida**: `~/.vnc/xstartup`, `~/.vnc/passwd`, `~/start-desktop.sh`, `~/show-access.sh`, `~/.termux/boot/start-services.sh`, `~/tunnel-url.txt`, `~/.dextermux/session`, `~/.dextermux/session.<display>`, `~/.dextermux/running.<display>`, `~/.dextermux/session-manager.sh`, `~/.dextermux/tls.sh`, `~/.dextermux/tls/{server.crt,server.key,mode,sans}`.
 - **Estado de execucao**: processos `Xvnc`, `websockify`, `cloudflared`; logs em `$TMPDIR/{cf,ws}.log`, `$TMPDIR/session.log`, `~/.vnc/localhost:1.log` e `~/dextermux-install.log`.
 
 ## Success Criteria
@@ -141,6 +143,8 @@ O usuario quer instalar mais de uma sessao, testar cada uma e depois manter apen
 - **SC-006**: A primeira tela do instalador mostra os recursos e um veredito em menos de 3 segundos, sem baixar pacotes.
 - **SC-007**: `dextermux-session try` sobe a segunda sessao sem derrubar a primeira e sem reiniciar o tunel.
 - **SC-008**: O preset `xfce` nao instala tema, dock, compositor ou apps extras, e a sessao padrao e `cinnamon`.
+- **SC-009**: `curl -k https://<ip>:6080/vnc.html` responde 200 e a mesma porta recusa HTTP em texto claro.
+- **SC-010**: Trocar o IP da LAN e rodar `dextermux-tls renew` faz o novo IP constar nas SANs do certificado.
 
 ## Assumptions
 

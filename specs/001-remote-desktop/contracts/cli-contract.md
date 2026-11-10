@@ -28,6 +28,7 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 | `--password=PASS` | aleatoria | senha do VncAuth (max. 8 caracteres) |
 | `--ssh-pubkey=KEY` | vazio | chave publica adicionada a `~/.ssh/authorized_keys` |
 | `--tunnel` / `--no-tunnel` | `--tunnel` | liga ou desliga o cloudflared |
+| `--tls` / `--no-tls` | `--tls` | HTTPS autoassinado na LAN para o noVNC |
 | `--repair` | desligado | nao instala pacotes; regrava configs e reinicia servicos |
 | `--dry-run` | desligado | imprime o plano e sai sem alterar nada |
 | `--list` | desligado | lista presets, tamanhos e perfis |
@@ -75,6 +76,10 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 | `~/.dextermux/session.<display>` | override por display (teste no `:2`) |
 | `~/.dextermux/running.<display>` | sessao realmente iniciada no display (usado para detectar troca) |
 | `~/.dextermux/session-manager.sh` | implementacao de `dextermux-session` |
+| `~/.dextermux/tls.sh` | implementacao de `dextermux-tls` |
+| `~/.dextermux/tls/server.crt` | certificado autoassinado (SANs: IP da LAN, 127.0.0.1, localhost) |
+| `~/.dextermux/tls/server.key` | chave privada (600) |
+| `~/.dextermux/tls/mode` | `1` = HTTPS, `0` = HTTP |
 | `~/.dextermux/wallpaper.svg` | papel de parede em gradiente |
 | `~/.termux/boot/start-services.sh` | boot |
 | `~/noVNC/` | noVNC 1.5.0 |
@@ -85,6 +90,7 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 | `$PREFIX/bin/desktop` | symlink para `start-desktop.sh` |
 | `$PREFIX/bin/url` | symlink para `show-access.sh` |
 | `$PREFIX/bin/dextermux-session` | symlink para `session-manager.sh` |
+| `$PREFIX/bin/dextermux-tls` | symlink para `tls.sh` |
 
 ## Comandos instalados
 
@@ -97,7 +103,12 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 | `dextermux-session set NOME` | define a sessao padrao e reinicia o `:1` |
 | `dextermux-session try NOME [DISPLAY]` | sobe a sessao no display indicado (padrao `:2`), reiniciando-o se estiver ativo com outra sessao |
 | `dextermux-session stop [DISPLAY]` | encerra o display indicado (padrao `:2`) |
-| `dextermux-session remove NOME` | remove pacotes exclusivos de `cinnamon` ou `mate` |
+| `dextermux-session remove NOME` | remove pacotes exclusivos de `xfce`, `cinnamon` ou `mate` |
+| `dextermux-tls ensure` | gera o certificado se ausente, IP mudou ou expira em 30 dias |
+| `dextermux-tls renew` | regenera o certificado |
+| `dextermux-tls enable` / `disable` | liga ou desliga o HTTPS local e para websockify/cloudflared |
+| `dextermux-tls show` | certificado, SANs e validade |
+| `dextermux-tls mode` | imprime `https` ou `http` |
 
 ## Portas
 
@@ -105,9 +116,9 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 |-------|---------|--------|
 | 8022 | sshd | LAN |
 | 5901 | Xvnc (VncAuth) | LAN |
-| 6080 | websockify + noVNC | LAN e tunel |
+| 6080 | websockify + noVNC (HTTPS autoassinado por padrao) | LAN e tunel |
 | 5902 | Xvnc da sessao de teste | LAN |
-| 6081 | websockify + noVNC da sessao de teste | LAN |
+| 6081 | websockify + noVNC da sessao de teste (mesmo esquema do 6080) | LAN |
 | 3389 | xrdp | nao usado (pacote quebrado) |
 
 ## Processos e logs
@@ -116,7 +127,7 @@ descritor; sem terminal disponivel, ou com `--yes`, segue com os padroes.
 |----------|-----|
 | `Xvnc :1` / `Xvnc :2` | `~/.vnc/localhost:<disp>.log` |
 | `websockify` | `$TMPDIR/ws-<porta>.log` |
-| `cloudflared` | `$TMPDIR/cf.log` |
+| `cloudflared` | `$TMPDIR/cf.log` (origem `https://localhost:6080` com `--no-tls-verify` quando TLS esta ligado) |
 | `sshd` | syslog do Termux |
 | sessao que falhou | `$TMPDIR/session.log` |
 | instalacao | `~/dextermux-install.log` |

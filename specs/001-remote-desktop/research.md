@@ -101,6 +101,16 @@ Resolucao recursiva de `Depends` sobre os indices `termux-main` e `termux-x11` (
 
 Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db ~296 MB, browser ~1278 MB.
 
+## 16. HTTPS autoassinado na LAN (v1.3.0)
+
+- **Fato**: o `websockify` suporta `--cert`, `--key` e `--ssl-only`; o noVNC escolhe `ws://` ou `wss://` pelo protocolo da pagina.
+- **Fato**: navegador nao mostra prompt de certificado para `wss`; e preciso abrir a pagina HTTPS e aceitar o certificado antes.
+- **Fato**: `openssl-tool` (OpenSSL 3.6.5) ja esta na base e aceita `-addext "subjectAltName=..."`.
+- **Fato**: portas abaixo de 1024 exigem root no Android, entao o HTTPS fica na 6080.
+- **Fato**: `cloudflared tunnel --url https://localhost:6080 --no-tls-verify` aceita origin com certificado autoassinado.
+- **Decisao**: certificado autoassinado por padrao, regenerado quando o IP da `wlan0` muda ou quando faltam 30 dias para expirar. `dextermux-tls` controla o modo sem reinstalar. `VeNCrypt`/X509 no VNC foi descartado porque o noVNC nao negocia X509 e o Remmina ja recusou VeNCrypt.
+- **Limitacao**: o aviso do navegador so desaparece instalando o certificado como autoridade no cliente (equivalente a opcao `mkcert`, nao implementada).
+
 ## Versoes validadas (2026-11-09)
 
 | Componente | Versao |
