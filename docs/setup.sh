@@ -23,7 +23,7 @@
 #   --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
 #   --icons / --no-icons   icones na area de trabalho (default desligado)
 #   --ubuntu / --no-ubuntu Ubuntu proot para ferramentas glibc (default ligado)
-#   --xubuntu              instala Xubuntu completo em rootfs dedicado e usa como desktop
+#   --xubuntu[=core|full]  Xubuntu em rootfs dedicado (default core, sem apps extras)
 #   --desktop=MODE         native | xubuntu
 #   --reset-proot          apaga os rootfs do proot (exige --confirm=APAGAR)
 #   --reset-all            apaga rootfs e $HOME do Termux (exige --confirm=APAGAR)
@@ -57,6 +57,7 @@ TLS="${TLS:-1}"
 DESKTOP_ICONS="${DESKTOP_ICONS:-0}"
 UBUNTU="${UBUNTU:-1}"
 XUBUNTU=0
+XUBUNTU_FULL=0
 DESKTOP_MODE=""
 RESET_PROOT=0
 RESET_ALL=0
@@ -152,7 +153,7 @@ Flags:
   --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
   --icons / --no-icons   icones na area de trabalho (default desligado)
   --ubuntu / --no-ubuntu Ubuntu proot para ferramentas glibc (default ligado)
-  --xubuntu              instala Xubuntu completo em rootfs dedicado
+  --xubuntu[=core|full]  Xubuntu em rootfs dedicado (default core, sem apps extras)
   --desktop=MODE         native | xubuntu
   --reset-proot          apaga os rootfs do proot (exige --confirm=APAGAR)
   --reset-all            apaga rootfs e $HOME do Termux (exige --confirm=APAGAR)
@@ -393,9 +394,15 @@ xubuntu_setup() {
         info "rootfs xubuntu ja existe"
     fi
     if [ -d "$XUBUNTU_ROOT" ] && [ ! -x "$XUBUNTU_ROOT/usr/bin/startxfce4" ]; then
-        info "instalando xubuntu-desktop e tigervnc (pode levar 20-40 min)"
+        local pkgs="xubuntu-core xubuntu-default-settings"
+        if [ "$XUBUNTU_FULL" = "1" ]; then
+            pkgs="xubuntu-desktop"
+            info "instalando xubuntu-desktop completo (20-40 min, ~3 GB)"
+        else
+            info "instalando xubuntu-core (10-20 min, ~1,5 GB)"
+        fi
         proot-distro login xubuntu -- bash -lc \
-            'export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get install -y -qq xubuntu-desktop tigervnc-standalone-server dbus-x11' \
+            "export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get install -y -qq $pkgs tigervnc-standalone-server dbus-x11" \
             2>&1 | tee -a "$LOG" || warn "apt falhou no Xubuntu"
     fi
     configure_xubuntu_session
@@ -1406,7 +1413,7 @@ print_dry_run() {
     row "Tunel" "$([ "$TUNNEL" = "1" ] && echo ligado || echo desligado)"
     row "HTTPS LAN" "$([ "$TLS" = "1" ] && echo autoassinado || echo desligado)"
     row "Ubuntu" "$([ "$UBUNTU" = "1" ] && echo proot || echo desligado)"
-    row "Xubuntu" "$([ "$XUBUNTU" = "1" ] && echo full || echo desligado)"
+    row "Xubuntu" "$([ "$XUBUNTU" = "1" ] && { [ "$XUBUNTU_FULL" = "1" ] && echo full || echo core; } || echo desligado)"
     row "Geometria" "$GEOMETRY"
     printf '\n  Pacotes base: %s\n' "$PKGS_BASE"
     printf '  Pacotes xfce: %s\n' "$PKGS_XFCE"
@@ -1435,7 +1442,8 @@ parse_args() {
             --no-icons) DESKTOP_ICONS=0 ;;
             --ubuntu) UBUNTU=1 ;;
             --no-ubuntu) UBUNTU=0 ;;
-            --xubuntu) XUBUNTU=1 ;;
+            --xubuntu|--xubuntu=core) XUBUNTU=1 ;;
+            --xubuntu=full) XUBUNTU=1; XUBUNTU_FULL=1 ;;
             --desktop=*) DESKTOP_MODE="${1#*=}" ;;
             --reset-proot) RESET_PROOT=1 ;;
             --reset-all) RESET_ALL=1 ;;
