@@ -6,7 +6,7 @@
 
 ## Summary
 
-Um unico `setup.sh`, executavel por `curl -fsSL <url> | bash`, instala e configura um desktop Linux acessivel por VNC local, noVNC no navegador e tunel HTTPS do Cloudflare, com banner de URLs ao abrir o Termux, comandos `desktop`/`url`/`dextermux-session` e autostart no boot. A versao 2.0.0 adiciona diagnostico de recursos antes de qualquer download, menus numerados de escolha (sessao grafica e perfis de desenvolvimento), Cinnamon como sessao padrao, XFCE padrao sem restilizacao e suporte a MATE com troca e teste em paralelo. O fluxo evita `xrdp` (pacote quebrado no Termux) e reduz o atrito de reinstalacao a um comando.
+Um unico `setup.sh`, executavel por `curl -fsSL <url> | bash`, instala e configura um desktop Linux acessivel por VNC local, noVNC no navegador e tunel HTTPS do Cloudflare, com banner de URLs ao abrir o Termux, comandos `desktop`/`url`/`dextermux-session` e autostart no boot. A versao 2.0.0 adiciona diagnostico de recursos antes de qualquer download, menus numerados de escolha (sessao grafica e perfis de desenvolvimento), Cinnamon como sessao padrao, XFCE padrao sem restilizacao, suporte a MATE com troca e teste em paralelo e HTTPS autoassinado na LAN para o noVNC. O fluxo evita `xrdp` (pacote quebrado no Termux) e reduz o atrito de reinstalacao a um comando.
 
 ## Technical Context
 
@@ -64,6 +64,10 @@ Arquivos gerados no dispositivo:
 ~/.dextermux/session         # sessao padrao (cinnamon|xfce|mate|none)
 ~/.dextermux/session.<disp>  # override por display (usado no teste :2)
 ~/.dextermux/session-manager.sh  # atalho dextermux-session
+~/.dextermux/tls.sh          # atalho dextermux-tls
+~/.dextermux/tls/server.crt  # certificado autoassinado (IP da LAN nas SANs)
+~/.dextermux/tls/server.key  # chave privada (600)
+~/.dextermux/tls/mode        # 1 = HTTPS, 0 = HTTP
 ~/.termux/boot/start-services.sh
 ~/noVNC/                     # noVNC 1.5.0
 ~/tunnel-url.txt             # ultima URL publica
@@ -71,6 +75,7 @@ Arquivos gerados no dispositivo:
 $PREFIX/bin/desktop          # atalho -> start-desktop.sh
 $PREFIX/bin/url              # atalho -> show-access.sh
 $PREFIX/bin/dextermux-session
+$PREFIX/bin/dextermux-tls
 ```
 
 **Structure Decision**: projeto single-file (installer). Os helpers sao gerados pelo propio instalador para manter um unico artefato distribuivel.
@@ -83,6 +88,7 @@ $PREFIX/bin/dextermux-session
 | `start-desktop.sh` | `termux-wake-lock`, sshd, limpar locks, Xvnc, websockify, cloudflared; aceita display e sessao |
 | `show-access.sh` | calcular IP por `ifconfig`, checar processos e imprimir URLs, sessao e display de teste |
 | `dextermux-session` | listar, trocar, testar em `:2` e remover sessoes |
+| `dextermux-tls` | gerar, renovar, ligar e desligar o certificado da LAN |
 | `~/.vnc/xstartup` | dbus, sessao escolhida e fallback de 15 s para `xfce` |
 | `~/.bashrc` | autostart em background + banner (bloco com marcadores) |
 | `~/.termux/boot/start-services.sh` | chamar `start-desktop.sh` no boot |
@@ -103,6 +109,7 @@ $PREFIX/bin/dextermux-session
 12. **Sessao por display**: `~/.dextermux/session.<display>` permite testar Cinnamon ou MATE no `:2` (VNC 5902, noVNC 6081) sem derrubar o `:1` nem o tunel.
 13. **Fallback de 15 s**: sessao experimental roda em background por 15 s antes de assumir o display; se morrer, `exec startxfce4` assume e o erro vai para `$TMPDIR/session.log`.
 14. **Tamanhos medidos, nao estimados**: os numeros dos menus vieram da resolucao real de dependencias nos indices `termux-main` e `termux-x11` (Installed-Size), incluindo a base remota.
+15. **HTTPS autoassinado na LAN**: o `websockify` tem TLS nativo (`--cert`, `--key`, `--ssl-only`) e o noVNC deriva `wss://` do protocolo da pagina. O certificado e gerado com `openssl-tool` (ja instalado), com o IP da `wlan0` nas SANs, e regenerado quando o IP muda. `VeNCrypt` no VNC foi descartado porque o noVNC nao negocia X509 e o Remmina ja recusou VeNCrypt. O tunel usa `https://localhost:6080 --no-tls-verify` para nao quebrar o origin. Porta 6080 mantida porque portas abaixo de 1024 exigem root.
 
 ## Complexity Tracking
 

@@ -34,7 +34,7 @@ O instalador DEVE medir o aparelho antes de qualquer download (modelo, versao do
 - Plataforma alvo: Termux aarch64, Android 13+ (validado em Samsung Galaxy A15, Android 15).
 - Pacotes base: `x11-repo`, `tigervnc`, `openssh`, `openssl-tool`, `python`, `net-tools`, `cloudflared`, `git`, `curl`, `tar`.
 - Sessoes: `cinnamon` (padrao), `xfce` (visual padrao, apenas `xfce4` e `xfdesktop`), `mate`. `cinnamon` e `xfce` sao validadas no aparelho.
-- Portas: 8022 (sshd), 5901 (VNC), 6080 (noVNC/websocket), 5902/6081 (sessao de teste no display `:2`).
+- Portas: 8022 (sshd), 5901 (VNC), 6080 (noVNC/websocket em HTTPS autoassinado), 5902/6081 (sessao de teste no display `:2`).
 - Senha do VNC Auth: ate 8 caracteres.
 - URL do quick tunnel do Cloudflare e efemera e muda a cada reinicio.
 
@@ -51,9 +51,10 @@ Esta constitution prevalece sobre preferencias pontuais. Emendas exigem:
 2. atualizacao de `spec.md`/`tasks.md` quando mudar comportamento observavel;
 3. validacao no dispositivo antes de considerar concluido.
 
-**Version**: 1.2.0 | **Ratified**: 2026-11-09 | **Last Amended**: 2026-11-09
+**Version**: 1.3.0 | **Ratified**: 2026-11-09 | **Last Amended**: 2026-11-10
 
 ## Emendas
 
 - **1.1.0 (2026-11-09)**: Principio II passa a permitir instalador interativo quando ha TTY, mantendo o caminho automatico para pipe e `--yes`. Novo Principio VIII (Diagnose Before Installing). Sessoes graficas e perfis de desenvolvimento entram como escopo configuravel.
 - **1.2.0 (2026-11-09)**: preset restilizado (rofi, plank, picom, Arc, apps GNOME) removido a pedido do usuario; `xfce` passa a ser o XFCE padrao e `cinnamon` vira a sessao padrao.
+- **1.3.0 (2026-11-10)**: HTTPS autoassinado na LAN para o noVNC, com `dextermux-tls` para gerar, renovar e alternar o modo sem reinstalar.

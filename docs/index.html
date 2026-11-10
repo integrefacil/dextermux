@@ -121,7 +121,7 @@
         <div class="card"><div class="icon">&#127912;</div><h3>Cinnamon como padrao</h3><p>Sessao completa do Linux Mint, com XFCE e MATE disponiveis para comparar.</p></div>
         <div class="card"><div class="icon">&#128421;</div><h3>Tres sessoes</h3><p>Cinnamon, XFCE e MATE. Instale as tres, compare lado a lado e mantenha a sua.</p></div>
         <div class="card"><div class="icon">&#128736;</div><h3>Perfis de dev</h3><p>Node, PHP, Python, Rust, Go, Java/Kotlin, bancos e Chromium, com o custo em disco de cada grupo.</p></div>
-        <div class="card"><div class="icon">&#127760;</div><h3>No navegador</h3><p>noVNC na porta 6080 e tunel HTTPS publico do Cloudflare com um comando.</p></div>
+        <div class="card"><div class="icon">&#127760;</div><h3>HTTPS na LAN</h3><p>noVNC na 6080 com certificado autoassinado e tunel HTTPS publico do Cloudflare.</p></div>
         <div class="card"><div class="icon">&#9881;</div><h3>Zero memoria</h3><p>Banner com as URLs ao abrir o Termux. Comandos <code class="inline">desktop</code>, <code class="inline">url</code> e <code class="inline">dextermux-session</code>.</p></div>
       </div>
     </section>
@@ -163,10 +163,17 @@
       <table>
         <tr><th>Onde</th><th>Endereco</th><th>Senha</th></tr>
         <tr><td>VNC (LAN)</td><td><code class="inline">vnc://&lt;ip&gt;:5901</code></td><td>a definida no setup</td></tr>
-        <tr><td>Navegador (LAN)</td><td><code class="inline">http://&lt;ip&gt;:6080/vnc.html</code></td><td>a definida no setup</td></tr>
+        <tr><td>Navegador (LAN)</td><td><code class="inline">https://&lt;ip&gt;:6080/vnc.html</code></td><td>a definida no setup</td></tr>
         <tr><td>Navegador (externo)</td><td><code class="inline">&lt;url-do-tunel&gt;/vnc.html</code></td><td>a definida no setup</td></tr>
         <tr><td>SSH</td><td><code class="inline">ssh -p 8022 &lt;usuario&gt;@&lt;ip&gt;</code></td><td>chave publica</td></tr>
       </table>
+      <div class="note" style="margin-top:16px">
+        <b>HTTPS autoassinado na LAN.</b> A porta 6080 usa certificado gerado no proprio aparelho.
+        Aceite o aviso no primeiro acesso; depois o noVNC conecta por <code class="inline">wss</code>.
+        O IP da LAN entra nas SANs e o certificado e renovado quando ele muda. Use
+        <code class="inline">dextermux-tls show</code> para inspecionar e
+        <code class="inline">dextermux-tls disable</code> para voltar ao HTTP.
+      </div>
     </section>
 
     <section>
@@ -178,6 +185,8 @@
         <tr><td><code class="inline">dextermux-session list</code></td><td>Lista as sessoes instaladas e a padrao.</td></tr>
         <tr><td><code class="inline">dextermux-session try mate</code></td><td>Abre outra sessao em paralelo na porta 6081.</td></tr>
         <tr><td><code class="inline">dextermux-session remove cinnamon</code></td><td>Remove os pacotes exclusivos da sessao.</td></tr>
+        <tr><td><code class="inline">dextermux-tls show</code></td><td>Mostra certificado, SANs e validade.</td></tr>
+        <tr><td><code class="inline">dextermux-tls renew</code></td><td>Regenera o certificado da LAN.</td></tr>
         <tr><td><code class="inline">tail -f $TMPDIR/cf.log</code></td><td>Acompanha o tunel do Cloudflare.</td></tr>
       </table>
     </section>
