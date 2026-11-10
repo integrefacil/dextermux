@@ -39,7 +39,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="3.0.1"
+DEXTERMUX_VERSION="3.0.2"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -52,7 +52,7 @@ VNC_PASS="${VNC_PASS:-}"
 
 MODE="install"
 DRY_RUN=0
-TOTAL_STEPS=13
+TOTAL_STEPS=14
 STEP_NO=0
 LOG="$H/dextermux-install.log"
 
@@ -267,6 +267,29 @@ install_pkgs() {
 }
 
 # ---------------------------------------------------------------- arquivos
+
+cleanup_legacy() {
+    # remove artefatos das versoes 2.x (tema, dock, painel customizado)
+    rm -rf "$H/.config/plank" "$H/.config/rofi" "$H/.config/xfce4/panel"
+    rm -f "$H/.config/picom.conf" \
+        "$H/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml" \
+        "$H/.config/xfce4/helpers.rc" \
+        "$H/.local/share/applications/dextermux-apps.desktop" \
+        "$H/.dextermux/theme.sh" "$H/.dextermux/wallpaper.svg" \
+        "$P/bin/dextermux-theme"
+    rm -f "$H/.local/share/fonts/Ubuntu-Regular.ttf" \
+        "$H/.local/share/fonts/Ubuntu-Medium.ttf" \
+        "$H/.local/share/fonts/Ubuntu-Bold.ttf"
+}
+
+set_default_terminal() {
+    command -v xfconf-query >/dev/null 2>&1 || return 0
+    DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator \
+        -s xfce4-terminal 2>/dev/null \
+        || DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator \
+            -n -t string -s xfce4-terminal 2>/dev/null \
+        || true
+}
 
 write_xstartup() {
     mkdir -p "$H/.vnc"
@@ -709,6 +732,9 @@ run_install() {
     step "Senha do VNC"
     write_vnc_password
 
+    step "Limpeza de versoes antigas"
+    cleanup_legacy
+
     step "Configuracoes"
     write_modes
     write_xstartup
@@ -737,6 +763,7 @@ run_install() {
 
     step "Subindo servicos"
     "$H/start-desktop.sh" 2>&1 | tee -a "$LOG" || warn "servicos iniciaram com avisos; veja $LOG"
+    set_default_terminal
 
     step "Limpando cache"
     pkg clean >/dev/null 2>&1 || true
@@ -744,9 +771,11 @@ run_install() {
 }
 
 repair_only() {
-    TOTAL_STEPS=8
+    TOTAL_STEPS=9
     : >"$LOG"
     printf 'dextermux %s - reparo %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
+    step "Limpeza de versoes antigas"
+    cleanup_legacy
     step "Configuracoes"
     write_modes
     write_xstartup
@@ -770,6 +799,7 @@ repair_only() {
     sleep 1
     rm -f "$TMPDIR/.X1-lock" "$TMPDIR/.X11-unix/X1" "$H/.vnc/"*:1.pid 2>/dev/null || true
     "$H/start-desktop.sh" 2>&1 | tee -a "$LOG" || warn "servicos iniciaram com avisos"
+    set_default_terminal
     step "Verificacao"
     local n
     n=$(process_count)
