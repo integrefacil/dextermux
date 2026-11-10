@@ -783,14 +783,49 @@ if [ -x "$HOME/.dextermux/tls.sh" ]; then
     fi
 fi
 
-if ! pgrep -f "[w]ebsockify.*$PORT" >/dev/null; then
-    if [ "$TLS" = "1" ] && [ -s "$DIR/tls/server.crt" ]; then
-        setsid websockify --web="$HOME/noVNC" --cert="$DIR/tls/server.crt" --key="$DIR/tls/server.key" --ssl-only "$PORT" "localhost:$VNCPORT" >"$TMPDIR/ws-$PORT.log" 2>&1 </dev/null &
-    else
-        setsid websockify --web="$HOME/noVNC" "$PORT" "localhost:$VNCPORT" >"$TMPDIR/ws-$PORT.log" 2>&1 </dev/null &
+WS_ARGS=""
+WANT_TLS=0
+if [ "$TLS" = "1" ] && [ -s "$DIR/tls/server.crt" ]; then
+    WS_ARGS="--cert=$DIR/tls/server.crt --key=$DIR/tls/server.key --ssl-only"
+    WANT_TLS=1
+fi
+
+# reinicia o websockify se o modo TLS mudou
+WS_PID=$(pgrep -f "[w]ebsockify.*$PORT" | head -1 || true)
+if [ -n "$WS_PID" ]; then
+    WS_CMD=$(tr '\0' ' ' <"/proc/$WS_PID/cmdline" 2>/dev/null || echo "")
+    WS_TLS=0
+    case "$WS_CMD" in
+        *--ssl-only*) WS_TLS=1 ;;
+    esac
+    if [ "$WS_TLS" != "$WANT_TLS" ]; then
+        echo "reiniciando websockify no modo TLS=$WANT_TLS"
+        kill "$WS_PID" 2>/dev/null || true
+        sleep 1
+        WS_PID=""
     fi
 fi
+
+if [ -z "$WS_PID" ]; then
+    # shellcheck disable=SC2086
+    setsid websockify --web="$HOME/noVNC" $WS_ARGS "$PORT" "localhost:$VNCPORT" >"$TMPDIR/ws-$PORT.log" 2>&1 </dev/null &
+fi
 sleep 2
+
+# reinicia o cloudflared se a origem TLS mudou
+CF_PID=$(pgrep -f "[c]loudflared tunnel" | head -1 || true)
+if [ -n "$CF_PID" ]; then
+    CF_CMD=$(tr '\0' ' ' <"/proc/$CF_PID/cmdline" 2>/dev/null || echo "")
+    CF_TLS=0
+    case "$CF_CMD" in
+        *https://localhost:6080*) CF_TLS=1 ;;
+    esac
+    if [ "$CF_TLS" != "$WANT_TLS" ]; then
+        echo "reiniciando cloudflared no modo TLS=$WANT_TLS"
+        kill "$CF_PID" 2>/dev/null || true
+        sleep 1
+    fi
+fi
 
 # shellcheck disable=SC2050
 if [ "$DISP" = "1" ] && [ "__TUNNEL__" = "1" ] && ! pgrep -f "[c]loudflared tunnel" >/dev/null; then
