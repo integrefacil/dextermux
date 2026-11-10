@@ -61,6 +61,7 @@ conecta por `wss`. O IP da LAN entra nas SANs e o certificado e regenerado quand
 | `--ssh-pubkey=KEY` | chave publica para `authorized_keys` |
 | `--tunnel` / `--no-tunnel` | liga ou desliga o Cloudflare (default desligado) |
 | `--tls` / `--no-tls` | HTTPS autoassinado na LAN (default ligado) |
+| `--icons` / `--no-icons` | icones na area de trabalho (default desligado, economiza gvfs/tumbler) |
 | `--repair` | nao instala pacotes; regrava configs e reinicia |
 | `--dry-run` | mostra o plano e sai |
 | `--version` | versao do instalador |
@@ -88,7 +89,7 @@ O Android 12 introduziu o **phantom process killer**: processos criados por apps
 componentes sao mortos com `SIGKILL` (signal 9) acima de 32 no total. Nao e um limite do Termux e
 nao aparece como mensagem no terminal.
 
-O stack deste projeto fica em ~15 processos ocioso (dbus e gvfs incluidos) e ~20 com terminal e SSH abertos.
+O stack deste projeto fica em ~15 processos ocioso e ~20 com terminal e SSH abertos. O daemon do Thunar e os agentes do GNOME (ssh-agent/gpg-agent) ficam desligados.
 Para medir:
 
 ```bash

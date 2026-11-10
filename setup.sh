@@ -21,6 +21,7 @@
 #   --ssh-pubkey=KEY       chave publica para authorized_keys
 #   --tunnel / --no-tunnel liga ou desliga o Cloudflare (default desligado)
 #   --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
+#   --icons / --no-icons   icones na area de trabalho (default desligado)
 #   --repair               nao instala pacotes, apenas regrava configs e reinicia
 #   --dry-run              mostra o plano e sai sem alterar nada
 #   --version              versao do instalador
@@ -39,7 +40,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="3.3.1"
+DEXTERMUX_VERSION="3.4.0"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -47,6 +48,7 @@ GEOMETRY="${GEOMETRY:-1600x900}"
 NOVNC_VER="${NOVNC_VER:-1.5.0}"
 TUNNEL="${TUNNEL:-0}"
 TLS="${TLS:-1}"
+DESKTOP_ICONS="${DESKTOP_ICONS:-0}"
 SSH_PUBKEY="${SSH_PUBKEY:-}"
 VNC_PASS="${VNC_PASS:-}"
 
@@ -136,6 +138,7 @@ Flags:
   --ssh-pubkey=KEY       chave publica para authorized_keys
   --tunnel / --no-tunnel liga ou desliga o Cloudflare (default desligado)
   --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
+  --icons / --no-icons   icones na area de trabalho (default desligado)
   --repair               nao instala pacotes, apenas regrava configs e reinicia
   --dry-run              mostra o plano e sai sem alterar nada
   --version              versao do instalador
@@ -286,18 +289,30 @@ cleanup_legacy() {
 
 set_default_terminal() {
     command -v xfconf-query >/dev/null 2>&1 || return 0
+    local _ done=0
     for _ in 1 2 3 4 5 6 7 8; do
         if DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator \
             -s xfce4-terminal 2>/dev/null; then
-            return 0
+            done=1
+            break
         fi
         if DISPLAY=:1 xfconf-query -c xfce4-session -p /general/TerminalEmulator \
             -n -t string -s xfce4-terminal 2>/dev/null; then
-            return 0
+            done=1
+            break
         fi
         sleep 1
     done
-    warn "nao consegui definir o terminal padrao; rode: dextermux-status"
+    if [ "$DESKTOP_ICONS" = "1" ]; then
+        DISPLAY=:1 xfconf-query -c xfce4-desktop -p /desktop-icons/style -s 1 2>/dev/null || true
+    else
+        DISPLAY=:1 xfconf-query -c xfce4-desktop -p /desktop-icons/style -s 0 2>/dev/null \
+            || DISPLAY=:1 xfconf-query -c xfce4-desktop -p /desktop-icons/style -n -t int -s 0 2>/dev/null \
+            || true
+    fi
+    if [ "$done" = "0" ]; then
+        warn "nao consegui definir o terminal padrao; rode: dextermux-status"
+    fi
 }
 
 write_session_config() {
@@ -312,6 +327,7 @@ write_session_config() {
     <property name="LockCommand" type="string" value=""/>
     <property name="TerminalEmulator" type="string" value="xfce4-terminal"/>
     <property name="SaveOnExit" type="bool" value="false"/>
+    <property name="LaunchGNOME" type="bool" value="false"/>
   </property>
   <property name="sessions" type="empty">
     <property name="Failsafe" type="empty">
@@ -870,6 +886,10 @@ stop_services() {
     vncserver -kill :1 >/dev/null 2>&1 || true
     pkill -f "[w]ebsockify" 2>/dev/null || true
     pkill -f "[c]loudflared tunnel" 2>/dev/null || true
+    pkill -f "[s]sh-agent -s" 2>/dev/null || true
+    pkill -f "[g]pg-agent" 2>/dev/null || true
+    pkill -x Thunar 2>/dev/null || true
+    pkill -x tumblerd 2>/dev/null || true
     sleep 1
     rm -f "$TMPDIR/.X1-lock" "$TMPDIR/.X11-unix/X1" "$H/.vnc/"*:1.pid 2>/dev/null || true
 }
@@ -1110,6 +1130,8 @@ parse_args() {
             --no-tunnel) TUNNEL=0 ;;
             --tls) TLS=1 ;;
             --no-tls) TLS=0 ;;
+            --icons) DESKTOP_ICONS=1 ;;
+            --no-icons) DESKTOP_ICONS=0 ;;
             --repair) MODE="repair" ;;
             --dry-run) DRY_RUN=1 ;;
             -h|--help) usage; exit 0 ;;
