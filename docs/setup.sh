@@ -39,7 +39,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="3.3.0"
+DEXTERMUX_VERSION="3.3.1"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -52,7 +52,7 @@ VNC_PASS="${VNC_PASS:-}"
 
 MODE="install"
 DRY_RUN=0
-TOTAL_STEPS=18
+TOTAL_STEPS=19
 STEP_NO=0
 LOG="$H/dextermux-install.log"
 
@@ -866,6 +866,14 @@ write_modes() {
 
 # ---------------------------------------------------------------- instalacao
 
+stop_services() {
+    vncserver -kill :1 >/dev/null 2>&1 || true
+    pkill -f "[w]ebsockify" 2>/dev/null || true
+    pkill -f "[c]loudflared tunnel" 2>/dev/null || true
+    sleep 1
+    rm -f "$TMPDIR/.X1-lock" "$TMPDIR/.X11-unix/X1" "$H/.vnc/"*:1.pid 2>/dev/null || true
+}
+
 run_packages() {
     step "Atualizando indices"
     if [ "${DEXTERMUX_NO_UPDATE:-0}" = "1" ]; then
@@ -911,6 +919,9 @@ run_install() {
     printf 'dextermux %s - %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
     printf 'tunnel=%s tls=%s geometry=%s\n' "$TUNNEL" "$TLS" "$GEOMETRY" >>"$LOG"
 
+    step "Parando servicos"
+    stop_services
+
     run_packages
 
     step "websockify"
@@ -936,7 +947,6 @@ run_install() {
     step "Configuracoes"
     write_modes
     write_xstartup
-    write_session_config
     write_session_config
 
     step "Scripts de operacao"
@@ -972,14 +982,17 @@ run_install() {
 }
 
 repair_only() {
-    TOTAL_STEPS=9
+    TOTAL_STEPS=10
     : >"$LOG"
     printf 'dextermux %s - reparo %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
+    step "Parando servicos"
+    stop_services
     step "Limpeza de versoes antigas"
     cleanup_legacy
     step "Configuracoes"
     write_modes
     write_xstartup
+    write_session_config
     step "Scripts de operacao"
     write_start_desktop
     write_show_access
