@@ -23,6 +23,11 @@
 #   --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
 #   --icons / --no-icons   icones na area de trabalho (default desligado)
 #   --ubuntu / --no-ubuntu Ubuntu proot para ferramentas glibc (default ligado)
+#   --xubuntu              instala Xubuntu completo em rootfs dedicado e usa como desktop
+#   --desktop=MODE         native | xubuntu
+#   --reset-proot          apaga os rootfs do proot (exige --confirm=APAGAR)
+#   --reset-all            apaga rootfs e $HOME do Termux (exige --confirm=APAGAR)
+#   --confirm=APAGAR       libera reset-proot/reset-all
 #   --repair               nao instala pacotes, apenas regrava configs e reinicia
 #   --dry-run              mostra o plano e sai sem alterar nada
 #   --version              versao do instalador
@@ -41,7 +46,7 @@ set -eu
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
 
-DEXTERMUX_VERSION="4.0.1"
+DEXTERMUX_VERSION="5.0.0"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -51,12 +56,17 @@ TUNNEL="${TUNNEL:-0}"
 TLS="${TLS:-1}"
 DESKTOP_ICONS="${DESKTOP_ICONS:-0}"
 UBUNTU="${UBUNTU:-1}"
+XUBUNTU=0
+DESKTOP_MODE=""
+RESET_PROOT=0
+RESET_ALL=0
+CONFIRM=""
 SSH_PUBKEY="${SSH_PUBKEY:-}"
 VNC_PASS="${VNC_PASS:-}"
 
 MODE="install"
 DRY_RUN=0
-TOTAL_STEPS=20
+TOTAL_STEPS=23
 STEP_NO=0
 LOG="$H/dextermux-install.log"
 
@@ -142,6 +152,11 @@ Flags:
   --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
   --icons / --no-icons   icones na area de trabalho (default desligado)
   --ubuntu / --no-ubuntu Ubuntu proot para ferramentas glibc (default ligado)
+  --xubuntu              instala Xubuntu completo em rootfs dedicado
+  --desktop=MODE         native | xubuntu
+  --reset-proot          apaga os rootfs do proot (exige --confirm=APAGAR)
+  --reset-all            apaga rootfs e $HOME do Termux (exige --confirm=APAGAR)
+  --confirm=APAGAR       libera reset-proot/reset-all
   --repair               nao instala pacotes, apenas regrava configs e reinicia
   --dry-run              mostra o plano e sai sem alterar nada
   --version              versao do instalador
@@ -248,6 +263,7 @@ print_resources() {
 PKGS_BASE="tigervnc openssh openssl-tool python net-tools cloudflared curl tar dbus"
 PKGS_XFCE="xfwm4 xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop thunar xfce4-terminal ttf-dejavu"
 UBUNTU_ROOT="$P/var/lib/proot-distro/containers/ubuntu/rootfs"
+XUBUNTU_ROOT="$P/var/lib/proot-distro/containers/xubuntu/rootfs"
 
 pkg_installed() {
     dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"
@@ -317,6 +333,126 @@ set_default_terminal() {
     if [ "$done" = "0" ]; then
         warn "nao consegui definir o terminal padrao; rode: dextermux-status"
     fi
+}
+
+reset_proot() {
+    [ -d /data/data/com.termux/files/usr ] || die "reset so funciona dentro do Termux"
+    [ "$CONFIRM" = "APAGAR" ] || die "reset bloqueado: use --reset-proot --confirm=APAGAR"
+    info "apagando rootfs do proot"
+    rm -rf "$P/var/lib/proot-distro/containers"
+    ok "rootfs apagados"
+}
+
+reset_all() {
+    [ -d /data/data/com.termux/files/usr ] || die "reset so funciona dentro do Termux"
+    if [ "${DEXTERMUX_RESET_DONE:-0}" = "1" ]; then
+        return 0
+    fi
+    [ "$CONFIRM" = "APAGAR" ] || die "reset bloqueado: use --reset-all --confirm=APAGAR"
+    local self="${BASH_SOURCE[0]:-}"
+    if [ -z "$self" ] || [ ! -f "$self" ]; then
+        die "rode com: curl -fsSL <url> -o setup.sh && bash setup.sh --reset-all --confirm=APAGAR"
+    fi
+    local tmp="$TMPDIR/dextermux-reset.sh"
+    cp "$self" "$tmp"
+    chmod +x "$tmp"
+    info "apagando rootfs e conteudo de \$HOME"
+    rm -rf "$P/var/lib/proot-distro/containers"
+    find "$H" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+    DEXTERMUX_RESET_DONE=1 exec bash "$tmp" "$@"
+}
+
+configure_xubuntu_session() {
+    [ -d "$XUBUNTU_ROOT" ] || return 0
+    local vnc="$XUBUNTU_ROOT/root/.vnc"
+    mkdir -p "$vnc"
+    if [ -f "$H/.vnc/passwd" ]; then
+        cp -f "$H/.vnc/passwd" "$vnc/passwd"
+        chmod 600 "$vnc/passwd"
+    fi
+    cat >"$vnc/xstartup" <<'EOF'
+#!/bin/sh
+unset SESSION_MANAGER
+export XDG_RUNTIME_DIR=/tmp/runtime-root
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && command -v dbus-launch >/dev/null 2>&1; then
+    eval "$(dbus-launch --sh-syntax --exit-with-session)" 2>/dev/null || true
+fi
+exec startxfce4
+EOF
+    chmod +x "$vnc/xstartup"
+}
+
+xubuntu_setup() {
+    install_pkgs proot-distro
+    if [ ! -d "$XUBUNTU_ROOT" ]; then
+        info "instalando rootfs xubuntu (Ubuntu base)"
+        proot-distro install -n xubuntu ubuntu 2>&1 | tee -a "$LOG" || warn "falha ao instalar o rootfs xubuntu"
+    else
+        info "rootfs xubuntu ja existe"
+    fi
+    if [ -d "$XUBUNTU_ROOT" ] && [ ! -x "$XUBUNTU_ROOT/usr/bin/startxfce4" ]; then
+        info "instalando xubuntu-desktop e tigervnc (pode levar 20-40 min)"
+        proot-distro login xubuntu -- bash -lc \
+            'export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get install -y -qq xubuntu-desktop tigervnc-standalone-server dbus-x11' \
+            2>&1 | tee -a "$LOG" || warn "apt falhou no Xubuntu"
+    fi
+    configure_xubuntu_session
+}
+
+write_desktop_mode() {
+    mkdir -p "$H/.dextermux"
+    if [ -n "$DESKTOP_MODE" ]; then
+        printf '%s\n' "$DESKTOP_MODE" >"$H/.dextermux/desktop"
+    elif [ "$XUBUNTU" = "1" ]; then
+        printf 'xubuntu\n' >"$H/.dextermux/desktop"
+    elif [ ! -f "$H/.dextermux/desktop" ]; then
+        printf 'native\n' >"$H/.dextermux/desktop"
+    fi
+}
+
+write_desktop_helper() {
+    mkdir -p "$H/.dextermux"
+    cat >"$H/.dextermux/desktop.sh" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# Gerado por dextermux. Alterna entre o XFCE nativo e o Xubuntu do proot.
+set -eu
+P="${PREFIX:-/data/data/com.termux/files/usr}"
+FILE="$HOME/.dextermux/desktop"
+XROOT="$P/var/lib/proot-distro/containers/xubuntu/rootfs"
+
+restart() {
+    pkill -f "[X]vnc :1" 2>/dev/null || true
+    sleep 1
+    rm -f "$TMPDIR/.X1-lock" "$TMPDIR/.X11-unix/X1" "$HOME/.vnc/"*:1.pid 2>/dev/null || true
+    "$HOME/start-desktop.sh"
+}
+
+case "${1:-}" in
+    "")
+        echo "modo atual: $(cat "$FILE" 2>/dev/null || echo native)"
+        ;;
+    native)
+        echo native >"$FILE"
+        restart
+        ;;
+    xubuntu)
+        if [ ! -d "$XROOT" ]; then
+            echo "Xubuntu nao instalado; rode: bash setup.sh --xubuntu" >&2
+            exit 1
+        fi
+        echo xubuntu >"$FILE"
+        restart
+        ;;
+    *)
+        echo "uso: dextermux-desktop [native|xubuntu]" >&2
+        exit 1
+        ;;
+esac
+EOF
+    chmod +x "$H/.dextermux/desktop.sh"
+    ln -sf "$H/.dextermux/desktop.sh" "$P/bin/dextermux-desktop"
 }
 
 write_ubuntu_helpers() {
@@ -511,6 +647,7 @@ write_start_desktop() {
     cat >"$H/start-desktop.sh" <<'EOF'
 #!/data/data/com.termux/files/usr/bin/sh
 # Gerado por dextermux. Uso: start-desktop.sh
+P="${PREFIX:-/data/data/com.termux/files/usr}"
 DIR="$HOME/.dextermux"
 PORT=6080
 VNCPORT=5901
@@ -523,7 +660,30 @@ if ! pgrep -f "[X]vnc :1" >/dev/null; then
     rm -f "$TMPDIR/.X1-lock" "$TMPDIR/.X11-unix/X1" "$HOME/.vnc/"*:1.pid 2>/dev/null || true
 fi
 
-vncserver :1 -geometry __GEOMETRY__ -depth 24 -localhost no -SecurityTypes VncAuth 2>/dev/null
+MODE=$(cat "$DIR/desktop" 2>/dev/null || echo native)
+XROOT="$P/var/lib/proot-distro/containers/xubuntu/rootfs"
+
+if [ "$MODE" = "xubuntu" ] && [ -d "$XROOT" ]; then
+    if ! pgrep -f "[X]vnc :1" >/dev/null; then
+        echo "iniciando Xubuntu (proot)"
+        proot-distro login xubuntu -- vncserver :1 -geometry __GEOMETRY__ -depth 24 -localhost no -SecurityTypes VncAuth >/dev/null 2>&1 || true
+        i=0
+        while [ $i -lt 20 ]; do
+            pgrep -f "[X]vnc :1" >/dev/null && break
+            i=$((i + 1))
+            sleep 1
+        done
+    fi
+    if ! pgrep -f "[X]vnc :1" >/dev/null; then
+        echo "Xubuntu nao subiu; usando XFCE nativo"
+        echo native >"$DIR/desktop"
+        MODE=native
+    fi
+fi
+
+if [ "$MODE" != "xubuntu" ]; then
+    vncserver :1 -geometry __GEOMETRY__ -depth 24 -localhost no -SecurityTypes VncAuth 2>/dev/null
+fi
 sleep 2
 
 TLS=$(cat "$DIR/tls/mode" 2>/dev/null || echo 0)
@@ -1097,6 +1257,18 @@ run_install() {
     fi
     write_ubuntu_helpers
 
+    step "Xubuntu (proot)"
+    if [ "$XUBUNTU" = "1" ]; then
+        xubuntu_setup
+    else
+        info "Xubuntu desativado"
+    fi
+
+    step "Modo de desktop"
+    write_desktop_mode
+    write_desktop_helper
+    info "desktop: $(cat "$H/.dextermux/desktop" 2>/dev/null || echo native)"
+
     step "Certificado TLS"
     if [ "$TLS" = "1" ]; then
         "$H/.dextermux/tls.sh" ensure || warn "falha ao gerar o certificado; a LAN seguira em HTTP"
@@ -1114,7 +1286,7 @@ run_install() {
 }
 
 repair_only() {
-    TOTAL_STEPS=11
+    TOTAL_STEPS=13
     : >"$LOG"
     printf 'dextermux %s - reparo %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
     step "Parando servicos"
@@ -1135,6 +1307,9 @@ repair_only() {
     if [ "$UBUNTU" = "1" ]; then
         write_ubuntu_helpers
     fi
+    step "Modo de desktop"
+    write_desktop_mode
+    write_desktop_helper
     step "Banner do shell"
     write_bashrc_block
     step "Autostart no boot"
@@ -1176,7 +1351,7 @@ print_summary() {
 
     section "Resumo"
     row "Usuario" "$(whoami)"
-    row "Desktop" "XFCE4"
+    row "Desktop" "$(cat "$H/.dextermux/desktop" 2>/dev/null || echo native)"
     row "VNC local" "vnc://$ip:5901"
     row "noVNC local" "$scheme://$ip:6080/vnc.html"
     row "SSH" "ssh -p 8022 $(whoami)@$ip"
@@ -1227,16 +1402,17 @@ print_summary() {
 
 print_dry_run() {
     section "Plano (dry-run)"
-    row "Desktop" "XFCE4 minimo"
+    row "Desktop" "${DESKTOP_MODE:-$([ "$XUBUNTU" = "1" ] && echo xubuntu || echo native)}"
     row "Tunel" "$([ "$TUNNEL" = "1" ] && echo ligado || echo desligado)"
     row "HTTPS LAN" "$([ "$TLS" = "1" ] && echo autoassinado || echo desligado)"
     row "Ubuntu" "$([ "$UBUNTU" = "1" ] && echo proot || echo desligado)"
+    row "Xubuntu" "$([ "$XUBUNTU" = "1" ] && echo full || echo desligado)"
     row "Geometria" "$GEOMETRY"
     printf '\n  Pacotes base: %s\n' "$PKGS_BASE"
     printf '  Pacotes xfce: %s\n' "$PKGS_XFCE"
     printf '\n  Arquivos que seriam gravados:\n'
     printf '    ~/.vnc/xstartup\n    ~/.vnc/passwd\n    ~/start-desktop.sh\n'
-    printf '    ~/show-access.sh\n    ~/.dextermux/tls.sh\n    ~/.dextermux/status.sh\n    ~/.dextermux/ssh.sh\n    ~/.dextermux/dev.sh\n    ~/.dextermux/ubuntu.sh\n    ~/.dextermux/gui.sh\n'
+    printf '    ~/show-access.sh\n    ~/.dextermux/tls.sh\n    ~/.dextermux/status.sh\n    ~/.dextermux/ssh.sh\n    ~/.dextermux/dev.sh\n    ~/.dextermux/ubuntu.sh\n    ~/.dextermux/gui.sh\n    ~/.dextermux/desktop.sh\n'
     printf '    ~/.dextermux/tunnel\n    ~/.dextermux/tls/{server.crt,server.key,mode}\n'
     printf '    ~/.termux/boot/start-services.sh\n    ~/.bashrc (bloco dextermux, banner)\n\n'
 }
@@ -1247,7 +1423,7 @@ parse_args() {
     while [ $# -gt 0 ]; do
         case "$1" in
             -y|--yes) : ;;
-            --desktop=*|--dev=*) : ;;
+            --dev=*) : ;;
             --geometry=*) GEOMETRY="${1#*=}" ;;
             --password=*) VNC_PASS="${1#*=}" ;;
             --ssh-pubkey=*) SSH_PUBKEY="${1#*=}" ;;
@@ -1259,6 +1435,11 @@ parse_args() {
             --no-icons) DESKTOP_ICONS=0 ;;
             --ubuntu) UBUNTU=1 ;;
             --no-ubuntu) UBUNTU=0 ;;
+            --xubuntu) XUBUNTU=1 ;;
+            --desktop=*) DESKTOP_MODE="${1#*=}" ;;
+            --reset-proot) RESET_PROOT=1 ;;
+            --reset-all) RESET_ALL=1 ;;
+            --confirm=*) CONFIRM="${1#*=}" ;;
             --repair) MODE="repair" ;;
             --dry-run) DRY_RUN=1 ;;
             -h|--help) usage; exit 0 ;;
@@ -1267,10 +1448,24 @@ parse_args() {
         esac
         shift
     done
+    case "$DESKTOP_MODE" in
+        ""|native|xubuntu) ;;
+        *)
+            warn "desktop ignorado: $DESKTOP_MODE (use native|xubuntu)"
+            DESKTOP_MODE="native"
+            ;;
+    esac
 }
 
 main() {
     parse_args "$@"
+
+    if [ "$RESET_ALL" = "1" ]; then
+        reset_all "$@"
+    fi
+    if [ "$RESET_PROOT" = "1" ]; then
+        reset_proot
+    fi
 
     if [ ! -d /data/data/com.termux/files/usr ] && [ "$DRY_RUN" = "0" ]; then
         die "rode este script dentro do Termux"

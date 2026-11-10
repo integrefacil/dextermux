@@ -101,6 +101,8 @@ O usuario quer trafego criptografado na rede local e um ambiente que nao seja mo
 - **FR-020**: O instalador DEVE instalar Ubuntu via `proot-distro` por padrao, com `curl`, `git` e `ca-certificates`, e permitir pular com `--no-ubuntu`.
 - **FR-021**: O sistema DEVE expor `dextermux-dev`, `dextermux-ubuntu`, `dextermux-gui` e um wrapper `opencode`, alem de atalhos no menu do XFCE.
 - **FR-022**: Apps graficos do Ubuntu DEVEM renderizar no Xvnc nativo via `--shared-tmp` e cookie X11 copiado, sem segundo desktop.
+- **FR-023**: O instalador DEVE permitir instalar Xubuntu completo em rootfs dedicado (`--xubuntu`) e alternar o desktop com `dextermux-desktop native|xubuntu`.
+- **FR-024**: Resets DEVEM exigir `--confirm=APAGAR`, rodar apenas no Termux e nunca apagar `$HOME` quando invocado por pipe.
 
 ### Key Entities
 
@@ -121,6 +123,7 @@ O usuario quer trafego criptografado na rede local e um ambiente que nao seja mo
 - **SC-007**: O ambiente ocioso fica com 12-16 processos, abaixo do teto de 23 usado pelo status.
 - **SC-008**: `dextermux-status` mostra a contagem e o top 5 em menos de 2 segundos.
 - **SC-009**: `dextermux-dev` abre o opencode dentro do Ubuntu; `dextermux-gui xterm` abre uma janela no XFCE nativo.
+- **SC-010**: `--xubuntu` sobe o Xubuntu no `:1`; falha em 20 s volta ao XFCE nativo e registra no log.
 
 ## Assumptions
 

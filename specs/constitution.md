@@ -32,6 +32,9 @@ O instalador DEVE medir o aparelho antes de qualquer download (modelo, versao do
 ### IX. Process Budget
 O ambiente DEVE permanecer abaixo de 32 processos, teto imposto pelo phantom process killer do Android 12+. O desenho DEVE mirar 12-16 processos ociosos com dbus, sem Thunar daemon e sem agentes GNOME. O comando `dextermux-status` DEVE medir, avisar a partir de 23 e marcar critico a partir de 27, sem bloquear instalacao ou reparo.
 
+### X. Safe Destruction
+Operacoes que apagam dados DEVEM exigir confirmacao explicita por token (`--confirm=APAGAR`), recusar execucao por pipe quando o alvo inclui `$HOME` e nunca remover caminhos fora do Termux. O instalador DEVE se copiar para `$TMPDIR` e se re-executar antes de apagar o proprio diretorio de origem.
+
 ## Additional Constraints
 
 - Plataforma alvo: Termux aarch64, Android 13+ (validado em Samsung Galaxy A15, Android 15).
@@ -55,7 +58,7 @@ Esta constitution prevalece sobre preferencias pontuais. Emendas exigem:
 2. atualizacao de `spec.md`/`tasks.md` quando mudar comportamento observavel;
 3. validacao no dispositivo antes de considerar concluido.
 
-**Version**: 2.1.0 | **Ratified**: 2026-11-09 | **Last Amended**: 2026-11-10
+**Version**: 3.0.0 | **Ratified**: 2026-11-09 | **Last Amended**: 2026-11-10
 
 ## Emendas
 
@@ -64,3 +67,4 @@ Esta constitution prevalece sobre preferencias pontuais. Emendas exigem:
 - **1.3.0 (2026-11-10)**: HTTPS autoassinado na LAN para o noVNC, com `dextermux-tls` para gerar, renovar e alternar o modo sem reinstalar.
 - **2.0.0 (2026-11-10)**: escopo reduzido a XFCE4 minimo; Cinnamon, MATE, presets, perfis de dev e `dextermux-session` removidos. Principio II volta a exigir instalador sem prompts. Novo Principio IX (Process Budget) para o limite de 32 processos do Android. Tunel desligado por padrao e `.bashrc` sem autostart.
 - **2.1.0 (2026-11-10)**: Ubuntu via proot como runtime glibc por padrao, com ponte grafica para o XFCE nativo (`dextermux-dev`, `dextermux-gui`).
+- **3.0.0 (2026-11-10)**: Xubuntu completo em rootfs dedicado como modo alternativo, com fallback. Novo Principio X (Safe Destruction): resets exigem token `--confirm=APAGAR` e nunca rodam por pipe.

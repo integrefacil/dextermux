@@ -52,6 +52,7 @@ Publico:      desligado (rode: desktop com --tunnel)
 |---------|--------|
 | `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
 | `url` | imprime o banner com IP, portas e estado |
+| `dextermux-desktop` | mostra ou troca o modo do desktop |
 | `dextermux-dev` | opencode no Ubuntu, ou shell se ausente |
 | `dextermux-ubuntu` | shell no Ubuntu com acesso ao XFCE |
 | `dextermux-gui APP` | app grafico do Ubuntu no XFCE nativo |
@@ -91,7 +92,26 @@ dextermux-gui libreoffice     # app grafico no XFCE
 - `--no-ubuntu` pula a instalacao.
 - O binario antigo `~/.opencode/bin/opencode` (glibc) nao executa; pode apagar com `rm -rf ~/.opencode`.
 
-## 6. Processos e o limite de 32
+## 6. Xubuntu no proot (experimental)
+
+```bash
+bash setup.sh --xubuntu
+dextermux-desktop native     # volta ao XFCE
+dextermux-desktop xubuntu    # usa o Xubuntu
+```
+
+- ~3 GB e 20-40 min de instalacao.
+- ~25-30 processos ocioso: risco alto de signal 9 sem ADB.
+- Fallback automatico para o XFCE se nao subir em 20 s.
+
+Reset destrutivo:
+
+```bash
+bash setup.sh --reset-proot --confirm=APAGAR   # so rootfs
+bash setup.sh --reset-all --confirm=APAGAR     # rootfs + $HOME
+```
+
+## 7. Processos e o limite de 32
 
 Android 12+ mata com `SIGKILL` os processos criados pelo app acima de 32 no total
 (phantom process killer). O ambiente fica em ~11 processos ocioso.
@@ -105,7 +125,7 @@ dextermux-status
 - Para exibir icones na area de trabalho: `--icons` (consome gvfs e tumbler).
 - Se subir, feche abas e apps pesados; o `dextermux-status` mostra o top 5.
 
-## 7. Qualidade e resolucao
+## 8. Qualidade e resolucao
 
 noVNC (engrenagem) ou parametros na URL:
 
@@ -114,7 +134,7 @@ noVNC (engrenagem) ou parametros na URL:
 
 Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 
-## 8. Pendencias manuais (uma vez por instalacao)
+## 9. Pendencias manuais (uma vez por instalacao)
 
 1. Instalar o app **Termux:Boot** (F-Droid/GitHub) e abrir uma vez.
 2. Samsung: **Configuracoes -> Aplicativos -> Termux -> Bateria -> Sem restricoes**.
@@ -123,7 +143,7 @@ Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 5. Reservar o IP do celular no roteador.
 6. `passwd` para definir senha do usuario, se quiser.
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Sintoma | Causa provavel | Acao |
 |---------|----------------|------|
@@ -141,13 +161,13 @@ Remmina: aba **Advanced** -> qualidade **Best** e **Dynamic resolution update**.
 | SSH caiu apos `pkg upgrade` | openssh substituido | `pkill -x sshd; sshd` |
 | URL publica nao abre | tunel desligado ou caiu | `desktop` com `--tunnel` |
 
-## 10. Seguranca
+## 11. Seguranca
 
 - O tunel quick expoe o noVNC na internet; a unica barreira e a senha de 8 caracteres do VNC.
 - Para exposicao continua, migrar para named tunnel + Cloudflare Access (dominio proprio).
 - Nao reutilize a mesma senha do VNC em outros servicos.
 
-## 11. Referencias internas
+## 12. Referencias internas
 
 - `spec.md`: requisitos e criterios.
 - `plan.md`: decisoes e estrutura.

@@ -136,3 +136,7 @@
 - [x] T074 Ponte grafica com `--shared-tmp` e cookie X11
 - [x] T075 `dextermux-dev`, `dextermux-ubuntu`, `dextermux-gui`, wrapper `opencode` e atalhos no menu
 - [x] T076 Remover o PATH do opencode glibc do `.bashrc`
+- [x] T077 `--xubuntu` com rootfs dedicado, `xubuntu-desktop` e VNC interno
+- [x] T078 Modo `native|xubuntu` com `dextermux-desktop` e fallback de 20 s
+- [x] T079 `--reset-proot` e `--reset-all` com `--confirm=APAGAR`
+- [ ] T080 Validar Xubuntu no aparelho e medir a contagem de processos
