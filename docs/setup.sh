@@ -8,6 +8,7 @@
 #   - TigerVNC (Xvnc) com VncAuth, resolucao configuravel e accept-resize
 #   - noVNC + websockify (navegador, porta 6080)
 #   - Cloudflare quick tunnel (HTTPS publico, opcional)
+#   - HTTPS autoassinado na LAN para o noVNC (porta 6080)
 #   - sshd + chave autorizada
 #   - Banner com as URLs, comandos "url", "desktop" e "dextermux-session"
 #   - Autostart no boot (Termux:Boot)
@@ -29,13 +30,14 @@
 #   --password=PASS        senha do VNC (max. 8 caracteres)
 #   --ssh-pubkey=KEY       chave publica para authorized_keys
 #   --tunnel / --no-tunnel liga ou desliga o Cloudflare (default ligado)
+#   --tls / --no-tls      HTTPS autoassinado na LAN (default ligado)
 #   --repair               nao instala pacotes, apenas regrava configs e reinicia
 #   --dry-run              mostra o plano e sai sem alterar nada
 #   --list                 lista presets, tamanhos e perfis
 #   -h, --help             ajuda
 #
 # Variaveis de ambiente (compatibilidade):
-#   VNC_PASS, GEOMETRY, NOVNC_VER, SSH_PUBKEY, TUNNEL
+#   VNC_PASS, GEOMETRY, NOVNC_VER, SSH_PUBKEY, TUNNEL, TLS
 #   DEXTERMUX_ASCII=1      desenha sem caracteres de caixa
 #   DEXTERMUX_NO_UPDATE=1  pula "pkg update"
 #
@@ -52,6 +54,7 @@ H="$HOME"
 GEOMETRY="${GEOMETRY:-1600x900}"
 NOVNC_VER="${NOVNC_VER:-1.5.0}"
 TUNNEL="${TUNNEL:-1}"
+TLS="${TLS:-1}"
 SSH_PUBKEY="${SSH_PUBKEY:-}"
 VNC_PASS="${VNC_PASS:-}"
 
@@ -60,7 +63,7 @@ DEV_GROUPS="core web"
 MODE="install"
 DRY_RUN=0
 INTERACTIVE=1
-TOTAL_STEPS=15
+TOTAL_STEPS=16
 STEP_NO=0
 LOG="$H/dextermux-install.log"
 
@@ -155,13 +158,14 @@ Flags:
   --password=PASS        senha do VNC (max. 8 caracteres)
   --ssh-pubkey=KEY       chave publica para authorized_keys
   --tunnel / --no-tunnel liga ou desliga o Cloudflare (default ligado)
+  --tls / --no-tls       HTTPS autoassinado na LAN (default ligado)
   --repair               nao instala pacotes, apenas regrava configs e reinicia
   --dry-run              mostra o plano e sai sem alterar nada
   --list                 lista presets, tamanhos e perfis
   -h, --help             esta ajuda
 
 Variaveis de ambiente:
-  VNC_PASS, GEOMETRY, NOVNC_VER, SSH_PUBKEY, TUNNEL
+  VNC_PASS, GEOMETRY, NOVNC_VER, SSH_PUBKEY, TUNNEL, TLS
   DEXTERMUX_ASCII=1      desenha sem caracteres de caixa
   DEXTERMUX_NO_UPDATE=1  pula "pkg update"
 TXT
@@ -604,6 +608,14 @@ screen_remote() {
         *) TUNNEL=0 ;;
     esac
 
+    printf '\n  HTTPS autoassinado na LAN evita trafego em texto claro na porta 6080.\n'
+    printf '  O navegador mostra um aviso de certificado no primeiro acesso.\n\n'
+    answer=$(ask "Usar HTTPS autoassinado na LAN? [S/n]:" "$([ "$TLS" = "1" ] && echo s || echo n)")
+    case "$answer" in
+        s|S|y|Y) TLS=1 ;;
+        *) TLS=0 ;;
+    esac
+
     if [ -z "$VNC_PASS" ] && [ ! -f "$H/.vnc/passwd" ]; then
         answer=$(ask_secret "Senha do VNC (Enter para gerar aleatoria):")
         if [ -n "$answer" ]; then
@@ -636,7 +648,7 @@ screen_confirm() {
         section "Resumo da instalacao"
         case "$DESKTOP" in
             xfce) row "Desktop" "XFCE (visual padrao)" ;;
-            cinnamon) row "Desktop" "Cinnamon (experimental)" ;;
+            cinnamon) row "Desktop" "Cinnamon (padrao)" ;;
             mate) row "Desktop" "MATE (experimental)" ;;
             all) row "Desktop" "Todas as tres sessoes" ;;
             *) row "Desktop" "nenhum" ;;
@@ -651,6 +663,7 @@ screen_confirm() {
             row "SSH" "sshd na 8022"
         else
             row "Tunel" "$([ "$TUNNEL" = "1" ] && echo ligado || echo desligado)"
+            row "HTTPS LAN" "$([ "$TLS" = "1" ] && echo autoassinado || echo desligado)"
             row "Geometria" "$GEOMETRY"
             row "Senha VNC" "$([ -n "$VNC_PASS" ] && echo definida || echo "manter/gerar")"
             row "Chave SSH" "$([ -n "$SSH_PUBKEY" ] && echo fornecida || echo nao)"
@@ -762,14 +775,30 @@ for _ in 1 2 3 4 5; do
     sleep 1
 done
 
+TLS=0
+if [ -x "$HOME/.dextermux/tls.sh" ]; then
+    TLS=$(cat "$DIR/tls/mode" 2>/dev/null || echo 0)
+    if [ "$TLS" = "1" ]; then
+        "$HOME/.dextermux/tls.sh" ensure >/dev/null 2>&1 || true
+    fi
+fi
+
 if ! pgrep -f "[w]ebsockify.*$PORT" >/dev/null; then
-    setsid websockify --web="$HOME/noVNC" "$PORT" "localhost:$VNCPORT" >"$TMPDIR/ws-$PORT.log" 2>&1 </dev/null &
+    if [ "$TLS" = "1" ] && [ -s "$DIR/tls/server.crt" ]; then
+        setsid websockify --web="$HOME/noVNC" --cert="$DIR/tls/server.crt" --key="$DIR/tls/server.key" --ssl-only "$PORT" "localhost:$VNCPORT" >"$TMPDIR/ws-$PORT.log" 2>&1 </dev/null &
+    else
+        setsid websockify --web="$HOME/noVNC" "$PORT" "localhost:$VNCPORT" >"$TMPDIR/ws-$PORT.log" 2>&1 </dev/null &
+    fi
 fi
 sleep 2
 
 # shellcheck disable=SC2050
 if [ "$DISP" = "1" ] && [ "__TUNNEL__" = "1" ] && ! pgrep -f "[c]loudflared tunnel" >/dev/null; then
-    setsid cloudflared tunnel --url http://localhost:6080 --no-autoupdate >"$TMPDIR/cf.log" 2>&1 </dev/null &
+    if [ "$TLS" = "1" ] && [ -s "$DIR/tls/server.crt" ]; then
+        setsid cloudflared tunnel --url https://localhost:6080 --no-tls-verify --no-autoupdate >"$TMPDIR/cf.log" 2>&1 </dev/null &
+    else
+        setsid cloudflared tunnel --url http://localhost:6080 --no-autoupdate >"$TMPDIR/cf.log" 2>&1 </dev/null &
+    fi
     sleep 15
     grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" "$TMPDIR/cf.log" | tail -1 >"$HOME/tunnel-url.txt"
 fi
@@ -798,8 +827,10 @@ if pgrep -f "[X]vnc :1" >/dev/null; then
 else
     echo "VNC:          iniciando/parado (rode: desktop)"
 fi
+TLS=$(cat "$HOME/.dextermux/tls/mode" 2>/dev/null || echo 0)
+if [ "$TLS" = "1" ]; then SCHEME=https; else SCHEME=http; fi
 if pgrep -f "[w]ebsockify" >/dev/null; then
-    echo "noVNC local:  http://$IP:6080/vnc.html"
+    echo "noVNC local:  $SCHEME://$IP:6080/vnc.html"
 else
     echo "noVNC:        iniciando/parado (rode: desktop)"
 fi
@@ -811,13 +842,129 @@ else
     echo "Publico:      ${U:+ultimo: }${U:-indisponivel} (rode: desktop)"
 fi
 if pgrep -f "[X]vnc :2" >/dev/null; then
-    echo "Teste :2      http://$IP:6081/vnc.html"
+    echo "Teste :2      $SCHEME://$IP:6081/vnc.html"
 fi
 echo "======================"
 echo ""
 EOF
     chmod +x "$H/show-access.sh"
     ln -sf "$H/show-access.sh" "$P/bin/url"
+}
+
+write_tls_helper() {
+    mkdir -p "$H/.dextermux"
+    cat >"$H/.dextermux/tls.sh" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# Gerado por dextermux. Certificado TLS autoassinado para a LAN.
+set -eu
+DIR="$HOME/.dextermux/tls"
+CERT="$DIR/server.crt"
+KEY="$DIR/server.key"
+MODE="$DIR/mode"
+mkdir -p "$DIR"
+
+lan_ip() {
+    ifconfig 2>/dev/null | sed -n '/^wlan0/,/^$/s/.*inet \([0-9.]*\) .*/\1/p' | head -1
+}
+
+sans() {
+    local ip list
+    list="DNS:localhost,DNS:dextermux,IP:127.0.0.1"
+    ip=$(lan_ip)
+    if [ -n "$ip" ]; then
+        list="$list,IP:$ip"
+    fi
+    printf '%s\n' "$list"
+}
+
+enabled() {
+    [ "$(cat "$MODE" 2>/dev/null || echo 0)" = "1" ]
+}
+
+generate() {
+    if ! command -v openssl >/dev/null 2>&1; then
+        echo "openssl ausente; instale openssl-tool" >&2
+        return 1
+    fi
+    local san
+    san=$(sans)
+    rm -f "$CERT" "$KEY"
+    openssl req -x509 -newkey rsa:2048 -sha256 -days 825 -nodes \
+        -keyout "$KEY" -out "$CERT" \
+        -subj "/CN=dextermux" \
+        -addext "subjectAltName=$san" \
+        -addext "basicConstraints=critical,CA:FALSE" \
+        -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
+        -addext "extendedKeyUsage=serverAuth" >/dev/null 2>&1
+    chmod 600 "$KEY"
+    chmod 644 "$CERT"
+    printf '%s\n' "$san" >"$DIR/sans"
+    echo "certificado gerado para $san"
+}
+
+ensure() {
+    local want have
+    want=$(sans)
+    have=$(cat "$DIR/sans" 2>/dev/null || echo "")
+    if [ ! -s "$CERT" ] || [ ! -s "$KEY" ] || [ "$want" != "$have" ]; then
+        generate
+        return 0
+    fi
+    if ! openssl x509 -checkend 2592000 -noout -in "$CERT" >/dev/null 2>&1; then
+        echo "certificado expira em menos de 30 dias; renovando"
+        generate
+    fi
+}
+
+stop_services() {
+    pkill -f "[w]ebsockify" 2>/dev/null || true
+    pkill -f "[c]loudflared tunnel" 2>/dev/null || true
+    sleep 1
+}
+
+show() {
+    if [ ! -s "$CERT" ]; then
+        echo "sem certificado; rode: dextermux-tls renew"
+        return 0
+    fi
+    if enabled; then echo "modo: https"; else echo "modo: http"; fi
+    echo "cert: $CERT"
+    echo "key:  $KEY"
+    openssl x509 -in "$CERT" -noout -subject -dates 2>/dev/null || true
+    openssl x509 -in "$CERT" -noout -ext subjectAltName 2>/dev/null | tail -1 || true
+    echo "Para evitar o aviso do navegador, instale o cert como autoridade no cliente."
+}
+
+case "${1:-ensure}" in
+    ensure)
+        if enabled; then ensure; fi
+        ;;
+    renew) generate ;;
+    enable)
+        echo 1 >"$MODE"
+        ensure || true
+        stop_services
+        echo "HTTPS ligado; rode 'desktop' para subir os servicos"
+        ;;
+    disable)
+        echo 0 >"$MODE"
+        stop_services
+        echo "HTTPS desligado; rode 'desktop' para subir os servicos"
+        ;;
+    mode)
+        if enabled; then echo https; else echo http; fi
+        ;;
+    show) show ;;
+    *)
+        echo "uso: dextermux-tls [ensure|renew|enable|disable|mode|show]" >&2
+        exit 1
+        ;;
+esac
+EOF
+    chmod +x "$H/.dextermux/tls.sh"
+    ln -sf "$H/.dextermux/tls.sh" "$P/bin/dextermux-tls"
+    mkdir -p "$H/.dextermux/tls"
+    printf '%s\n' "$TLS" >"$H/.dextermux/tls/mode"
 }
 
 write_session_manager() {
@@ -1156,6 +1303,7 @@ run_install() {
     write_start_desktop
     write_show_access
     write_session_manager
+    write_tls_helper
 
     run_dev
 
@@ -1167,6 +1315,13 @@ run_install() {
 
     step "Chave SSH"
     write_ssh_key
+
+    step "Certificado TLS"
+    if [ "$TLS" = "1" ] && [ "$DESKTOP" != "none" ]; then
+        "$H/.dextermux/tls.sh" ensure || warn "falha ao gerar o certificado; a LAN seguira em HTTP"
+    else
+        info "HTTPS na LAN desligado"
+    fi
 
     step "Subindo servicos"
     if [ "$DESKTOP" = "none" ]; then
@@ -1182,7 +1337,7 @@ run_install() {
 }
 
 repair_only() {
-    TOTAL_STEPS=6
+    TOTAL_STEPS=7
     : >"$LOG"
     printf 'dextermux %s - reparo %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
     step "Configuracoes da sessao"
@@ -1192,6 +1347,11 @@ repair_only() {
     write_start_desktop
     write_show_access
     write_session_manager
+    write_tls_helper
+    step "Certificado TLS"
+    if [ "$TLS" = "1" ] && [ "$DESKTOP" != "none" ]; then
+        "$H/.dextermux/tls.sh" ensure || warn "falha ao gerar o certificado"
+    fi
     step "Banner do shell"
     write_bashrc_block
     step "Autostart no boot"
@@ -1221,7 +1381,12 @@ print_summary() {
     else
         row "Sessao" "$session"
         row "VNC local" "vnc://$ip:5901"
-        row "noVNC local" "http://$ip:6080/vnc.html"
+        if [ "$TLS" = "1" ]; then
+            row "noVNC local" "https://$ip:6080/vnc.html"
+            row "Certificado" "$H/.dextermux/tls/server.crt"
+        else
+            row "noVNC local" "http://$ip:6080/vnc.html"
+        fi
         row "Tunel publico" "$public"
         row "Senha VNC" "${VNC_PASS:-(a existente em ~/.vnc/passwd)}"
         row "Log" "$LOG"
@@ -1231,6 +1396,8 @@ print_summary() {
     printf '  %-22s %s\n' "desktop" "sobe sshd, Xvnc, websockify e cloudflared"
     printf '  %-22s %s\n' "url" "mostra IP, portas e estado"
     printf '  %-22s %s\n' "dextermux-session" "lista e troca a sessao grafica"
+    printf '  %-22s %s\n' "dextermux-tls show" "mostra o certificado e as SANs"
+    printf '  %-22s %s\n' "dextermux-tls renew" "regenera o certificado da LAN"
     printf '  %-22s %s\n' "dextermux-session try X" "testa uma sessao em paralelo na porta 6081"
     printf '  %-22s %s\n' "dextermux-session remove X" "remove pacotes de xfce, cinnamon ou mate"
 
@@ -1247,7 +1414,10 @@ print_summary() {
     printf '     Remover Termux de "Apps em suspensao" e "em suspensao profunda".\n'
     printf '  3. Reservar o IP do celular no roteador para nao mudar.\n'
     printf '  4. Se quiser senha do usuario: passwd\n'
-    printf '  5. O tunel publico expoe o noVNC na internet; use senha forte.\n'
+    if [ "$TLS" = "1" ]; then
+        printf '  5. No primeiro acesso https, aceite o certificado autoassinado no navegador.\n'
+    fi
+    printf '  6. O tunel publico expoe o noVNC na internet; use senha forte.\n'
     rule
 }
 
@@ -1274,6 +1444,7 @@ print_dry_run() {
     row "Desktop" "$DESKTOP"
     row "Dev" "${DEV_GROUPS:-nenhum}"
     row "Tunel" "$([ "$TUNNEL" = "1" ] && echo ligado || echo desligado)"
+    row "HTTPS LAN" "$([ "$TLS" = "1" ] && echo autoassinado || echo desligado)"
     row "Geometria" "$GEOMETRY"
     row "Estimativa" "~$(estimated_total_mb) MB"
     printf '\n  Pacotes base: %s\n' "$PKGS_BASE"
@@ -1290,6 +1461,7 @@ print_dry_run() {
     printf '\n  Arquivos que seriam gravados:\n'
     printf '    ~/.vnc/xstartup\n    ~/.vnc/passwd\n    ~/start-desktop.sh\n'
     printf '    ~/show-access.sh\n    ~/.dextermux/session\n    ~/.dextermux/session-manager.sh\n'
+    printf '    ~/.dextermux/tls.sh\n    ~/.dextermux/tls/{server.crt,server.key,mode}\n'
     printf '    ~/.termux/boot/start-services.sh\n    ~/.bashrc (bloco dextermux)\n\n'
 }
 
@@ -1305,6 +1477,8 @@ parse_args() {
             --ssh-pubkey=*) SSH_PUBKEY="${1#*=}" ;;
             --tunnel) TUNNEL=1 ;;
             --no-tunnel) TUNNEL=0 ;;
+            --tls) TLS=1 ;;
+            --no-tls) TLS=0 ;;
             --repair) MODE="repair" ;;
             --dry-run) DRY_RUN=1 ;;
             --list) print_list; exit 0 ;;
