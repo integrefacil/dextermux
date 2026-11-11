@@ -258,3 +258,13 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
 - **Decisao**: zoom inicial 1:1 (B3), pinça, botoes `-`, `+`, `Ajustar` e `1:1`, e follow com margem
   de 18% (C1).
 - **Decisao**: sem duplo toque para zoom, para nao atrasar nem duplicar o clique simples.
+
+## 29. cursor invisivel no remote.html (2026-11-11)
+
+- **Sintoma**: no celular nao dava para ver onde o ponteiro estava; o canvas mostrava so o desktop.
+- **Causa**: o `Cursor` do noVNC usa `cursor: url()` quando ha suporte e um canvas `position: fixed`
+  preso ao mouse local quando `isTouchDevice()`. Em toque nao existe mouse local, entao o cursor
+  nunca aparece na posicao virtual enviada por `_sendMouse`.
+- **Decisao**: anel proprio em `#view`, posicionado por `px`/`py` convertidos para a vista
+  (`px * zoom - viewX`), com ponto central marcando o hotspot exato. Independe de pseudo-encoding
+  de cursor e funciona no celular e no desktop.
