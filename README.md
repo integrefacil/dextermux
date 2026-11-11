@@ -62,15 +62,50 @@ Senha:        8 caracteres definidos na instalacao
 
 No primeiro acesso HTTPS, aceite o certificado autoassinado.
 
+## TV e teclado
+
+O desktop nao é espelhado da tela do celular: ele vive num `Xvnc` virtual. A TV é apenas outro
+cliente na mesma rede, então não existe captura de tela do Android no caminho.
+
+```bash
+cast on          # liga o cast e mostra as URLs
+cast qr          # URL da TV em QR Code (precisa de qrencode)
+cast stream on   # modo MJPEG para navegador de TV simples
+cast dlna        # empurra o desktop para o player DLNA da TV
+```
+
+| Modo | Endereço | Controle |
+|------|----------|----------|
+| noVNC (padrão) | `https://<ip>:6080/tv.html` | `remote.html` no celular ou controle da TV |
+| noVNC sem TLS | `http://<ip>:6081/tv.html` | idem |
+| MJPEG | `http://<ip>:6081/stream.html` | nenhum |
+| DLNA | player da TV | nenhum, latência de 1 a 5 s |
+
+Se o navegador da TV recusar o certificado autoassinado, use a porta `6081`: nesse modo a senha do
+VNC trafega sem criptografia na LAN.
+
+Teclado e mouse Bluetooth são pareados no Android, nunca dentro do Linux: o Termux não vê o
+adaptador e o proot não recebe o barramento. Pareie no celular se for controlar pelo `remote.html`,
+ou na TV se o navegador dela for o cliente. Depois aplique o layout com `keyboard abnt2`.
+
+Chromecast dongle não abre URL arbitrária; nesse caso use o espelhamento de tela do Android com um
+app VNC em primeiro plano.
+
 ## Comandos
 
 | Comando | Efeito |
 |---------|--------|
 | `desktop` | sobe/religa os servicos |
 | `url` | bloco de acesso |
-| `status` | processos, top 5, TLS, tunel e desktop |
+| `status` | processos, memoria, acesso, cast e teclado |
 | `session` | mostra o desktop atual e os instalados |
 | `session cinnamon` / `session xfce` | troca sem apagar |
+| `cast on [novnc\\|mjpeg]` | liga o cast para a TV na LAN |
+| `cast off` / `status` / `url` / `qr` | estado, URLs e QR Code |
+| `cast quality 720p\\|1080p` | qualidade do stream |
+| `cast stream on` / `off` | MJPEG para navegador de TV simples |
+| `cast dlna [URL]` / `dlna off` | push para o player DLNA da TV |
+| `keyboard br\\|abnt2\\|us\\|es` | layout do teclado fisico no X |
 | `tunnel on` / `off` / `status` / `url` | Cloudflare |
 | `tls show` / `renew` / `enable` / `disable` | certificado |
 | `password` | troca a senha de VNC/noVNC/SSH |
@@ -89,6 +124,10 @@ No primeiro acesso HTTPS, aceite o certificado autoassinado.
 | `--password=PASS` | senha compartilhada (ate 8) |
 | `--ssh-pubkey=KEY` | chave publica |
 | `--geometry=WxH` | resolucao |
+| `--cast` / `--no-cast` | cast para TV na LAN |
+| `--cast-mode=novnc\\|mjpeg\\|dlna` | transporte do cast |
+| `--cast-quality=720p\\|1080p` | qualidade do stream |
+| `--keyboard=br\\|abnt2\\|us\\|es` | layout do X |
 | `--reset=artifacts` | B1: artefatos + proot |
 | `--reset=home` | B2: artefatos + proot + `$HOME` |
 | `--repair` | regrava configs e reinicia |

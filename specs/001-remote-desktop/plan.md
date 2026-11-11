@@ -41,6 +41,7 @@ lib/20-detect.sh             # recursos e estado
 lib/30-packages.sh           # pacotes, upgrade, cleanup legado
 lib/40-session.sh            # xstartup, modo, comando session
 lib/50-remote.sh             # Xvnc, noVNC, TLS, banner, boot
+lib/52-cast.sh               # cast para TV, controle, teclado e status
 lib/60-ssh.sh                # chave, senha compartilhada, password
 lib/70-proot.sh              # Ubuntu opcional + gui
 lib/75-tunnel.sh             # comando tunnel
