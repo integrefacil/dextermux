@@ -254,6 +254,7 @@ write_remote_page() {
   #top .dot.on { background: #34a853; }
   #preview { position: fixed; right: 8px; top: 36px; width: 168px; height: 95px;
     border: 1px solid #333; border-radius: 8px; overflow: hidden; opacity: 0.85; }
+  #preview #screen { width: 100%; height: 100%; }
   #pad { position: absolute; left: 0; right: 0; top: 36px; bottom: 132px;
     touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
     background: radial-gradient(circle at 50% 40%, #1b1e23, #0c0d10); }
@@ -267,7 +268,7 @@ write_remote_page() {
 </style>
 </head>
 <body>
-<div id="top"><span class="dot" id="dot"></span><span id="state">conectando</span></div>
+<div id="top"><span class="dot" id="dot"></span><span id="state">conectando</span><span id="pos"></span></div>
 <div id="preview"><div id="screen"></div></div>
 <div id="pad"></div>
 <div id="hint">arraste para mover, toque para clicar, segure e arraste para mover janela</div>
@@ -328,41 +329,63 @@ function keyUp(name) { if (rfb) rfb.sendKey(KEYS[name] || keysymFor(name), codeF
 
 function screenCanvas() { return screen.querySelector('canvas'); }
 
-// noVNC 1.5 nao expoe sendPointer: o caminho e despachar eventos de mouse no
-// canvas, que o RFB converte em PointerEvent do protocolo VNC
-function canvasClient() {
-  const c = screenCanvas();
-  if (!c) return null;
-  const r = c.getBoundingClientRect();
-  if (!r.width || !r.height) return null;
-  return {
-    c,
-    x: r.left + (px / fbW) * r.width,
-    y: r.top + (py / fbH) * r.height,
-  };
+function showPos() {
+  const el = document.getElementById('pos');
+  if (el) el.textContent = Math.round(px) + ',' + Math.round(py);
 }
 
-function emit(type, extra) {
-  const p = canvasClient();
-  if (!p) return;
-  p.c.dispatchEvent(new MouseEvent(type, Object.assign({
-    clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, view: window,
-  }, extra || {})));
+// noVNC 1.5 nao expoe sendPointer e o container do canvas precisa ter tamanho:
+// sem isso _scale fica 0 e absX() devolve 0. _sendMouse recebe CSS do canvas e
+// converte para o framebuffer, sem passar pelo capture proxy de mousedown.
+function pointer(mask) {
+  if (!rfb) return;
+  const c = screenCanvas();
+  if (!c) return;
+  const r = c.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const cx = (px / fbW) * r.width;
+  const cy = (py / fbH) * r.height;
+  if (typeof rfb._sendMouse === 'function') {
+    rfb._sendMouse(cx, cy, mask);
+    showPos();
+    return;
+  }
+  const box = {
+    clientX: r.left + cx, clientY: r.top + cy,
+    bubbles: true, cancelable: true, view: window,
+  };
+  c.dispatchEvent(new MouseEvent(mask === 0 ? 'mousemove' : 'mousedown', box));
+  if (mask !== 0) {
+    setTimeout(() => c.dispatchEvent(new MouseEvent('mouseup', box)), 60);
+  }
+  showPos();
+}
+
+function maskFromButtons(buttons) {
+  let m = 0;
+  if (buttons & 1) m |= 1;
+  if (buttons & 2) m |= 4;
+  if (buttons & 4) m |= 2;
+  return m;
 }
 
 function move(dx, dy) {
   px = Math.min(fbW - 1, Math.max(0, px + dx));
   py = Math.min(fbH - 1, Math.max(0, py + dy));
-  emit('mousemove', { buttons: dragging ? 1 : 0 });
+  pointer(dragging ? 1 : 0);
 }
 
 function click(button) {
-  const b = button === 'right' ? 2 : 0;
-  emit('mousedown', { button: b, buttons: b === 2 ? 2 : 1 });
-  emit('mouseup', { button: b, buttons: 0 });
+  const mask = button === 'right' ? 4 : 1;
+  pointer(mask);
+  setTimeout(() => pointer(dragging ? 1 : 0), 60);
 }
 
-function wheel(dy) { emit('wheel', { deltaY: dy }); }
+function wheel(dy) {
+  if (!dy) return;
+  pointer(dy < 0 ? 8 : 16);
+  setTimeout(() => pointer(dragging ? 1 : 0), 40);
+}
 
 function isTouchRecent() { return Date.now() - lastTouchAt < 700; }
 
@@ -380,7 +403,7 @@ pad.addEventListener('touchstart', (ev) => {
   clearTimeout(holdTimer);
   holdTimer = setTimeout(() => {
     dragging = true;
-    emit('mousedown', { button: 0, buttons: 1 });
+    pointer(1);
   }, 450);
 }, { passive: true });
 
@@ -410,7 +433,7 @@ pad.addEventListener('touchend', (ev) => {
   clearTimeout(holdTimer);
   holdTimer = null;
   if (ev.touches.length > 0) return;
-  if (dragging) { emit('mouseup', { button: 0, buttons: 0 }); dragging = false; }
+  if (dragging) { pointer(0); dragging = false; }
   else if (!moved) click('left');
   startPt = null;
   lastPt = null;
@@ -423,17 +446,17 @@ pad.addEventListener('mousemove', (ev) => {
   if (!r.width || !r.height) return;
   px = Math.min(fbW - 1, Math.max(0, ((ev.clientX - r.left) / r.width) * fbW));
   py = Math.min(fbH - 1, Math.max(0, ((ev.clientY - r.top) / r.height) * fbH));
-  emit('mousemove', { buttons: ev.buttons });
+  pointer(maskFromButtons(ev.buttons));
 });
 
 pad.addEventListener('mousedown', (ev) => {
   if (isTouchRecent()) return;
-  emit('mousedown', { button: ev.button, buttons: ev.buttons });
+  pointer(maskFromButtons(ev.buttons || (ev.button === 2 ? 2 : 1)));
 });
 
 pad.addEventListener('mouseup', (ev) => {
   if (isTouchRecent()) return;
-  emit('mouseup', { button: ev.button, buttons: 0 });
+  pointer(maskFromButtons(ev.buttons));
 });
 
 pad.addEventListener('contextmenu', (ev) => { ev.preventDefault(); });

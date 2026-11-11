@@ -214,3 +214,16 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
   PointerEvent do protocolo VNC pelo caminho publico (`clientToElement` + `absX`).
 - **Extras**: toque curto clica, segurar 450 ms e arrastar move janela, dois dedos rolam, mouse
   fisico mapeia posicao absoluta e botoes Clique/Dir na barra.
+
+## 26. remote.html sem tamanho no canvas (2026-11-11)
+
+- **Sintoma**: depois do item 25 o ponteiro continuava parado no celular.
+- **Causa 1**: `#screen` (container do canvas) nao tinha CSS, entao a altura era 0. O noVNC calcula
+  `_scale` pelo tamanho do container; com 0, `absX()` devolve 0 e nenhuma coordenada e enviada.
+- **Causa 2**: mousedown sintetico disparava `setCapture`, que cria um overlay transparente de
+  tela cheia com `z-index: 10000`. Sem um mouseup real, o overlay nunca saia e engolia os toques
+  seguintes.
+- **Decisao**: `#preview #screen` com 100% de largura e altura; ponteiro enviado por `_sendMouse`
+  com coordenadas CSS do canvas, sem eventos de mouse e sem capture proxy. O caminho DOM fica como
+  reserva.
+- **Diagnostico**: o topo do `remote.html` mostra as coordenadas atuais, provando se o gesto chega.
