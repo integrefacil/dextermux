@@ -24,6 +24,10 @@ Flags:
   --password=PASS        senha de VNC/noVNC/SSH (max. 8 caracteres)
   --ssh-pubkey=KEY       chave publica para authorized_keys
   --geometry=WxH         resolucao inicial (default 1600x900)
+  --cast / --no-cast     cast para TV na LAN (default nao)
+  --cast-mode=MODE       novnc (padrao), mjpeg ou dlna
+  --cast-quality=Q       720p (padrao) ou 1080p
+  --keyboard=LAYOUT      layout do X: br, abnt2, us ou es (default br)
   --reset=artifacts      reinstala do zero apagando so os artefatos
   --reset=home           reinstala do zero apagando todo o $HOME
   --repair               regrava configs e reinicia, sem instalar pacotes
@@ -33,7 +37,8 @@ Flags:
   -h, --help             esta ajuda
 
 Variaveis: VNC_PASS, GEOMETRY, NOVNC_VER, SSH_PUBKEY, TUNNEL, TLS, DESKTOP,
-PROOT, DEXTERMUX_ASCII=1, DEXTERMUX_NO_UPDATE=1, DEXTERMUX_NO_UPGRADE=1.
+PROOT, CAST, CAST_KIND, CAST_QUALITY, KEYBOARD, DEXTERMUX_ASCII=1,
+DEXTERMUX_NO_UPDATE=1, DEXTERMUX_NO_UPGRADE=1.
 TXT
 }
 
@@ -108,6 +113,11 @@ parse_args() {
             -y|--yes) INTERACTIVE=0 ;;
             --desktop=*) DESKTOP="${1#*=}" ;;
             --geometry=*) GEOMETRY="${1#*=}" ;;
+            --cast) CAST_MODE=1 ;;
+            --no-cast) CAST_MODE=0 ;;
+            --cast-mode=*) CAST_KIND="${1#*=}"; CAST_MODE=1 ;;
+            --cast-quality=*) CAST_QUALITY="${1#*=}" ;;
+            --keyboard=*) KEYBOARD_LAYOUT="${1#*=}" ;;
             --password=*) SHARED_PASS="${1#*=}" ;;
             --ssh-pubkey=*) SSH_PUBKEY="${1#*=}" ;;
             --tunnel) TUNNEL_MODE=1 ;;
@@ -134,5 +144,21 @@ parse_args() {
     case "$MODE" in
         install|repair|proot) ;;
         *) die "modo invalido" ;;
+    esac
+    case "$CAST_MODE" in
+        0|1) ;;
+        *) die "cast invalido: $CAST_MODE (0|1)" ;;
+    esac
+    case "$CAST_KIND" in
+        novnc|mjpeg|dlna) ;;
+        *) die "cast-mode invalido: $CAST_KIND (novnc|mjpeg|dlna)" ;;
+    esac
+    case "$CAST_QUALITY" in
+        720p|1080p) ;;
+        *) die "cast-quality invalido: $CAST_QUALITY (720p|1080p)" ;;
+    esac
+    case "$KEYBOARD_LAYOUT" in
+        br|abnt2|us|es) ;;
+        *) die "keyboard invalido: $KEYBOARD_LAYOUT (br|abnt2|us|es)" ;;
     esac
 }

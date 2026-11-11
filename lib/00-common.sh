@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # 00-common - constantes, UI basica, log e utilitarios
 
-DEXTERMUX_VERSION="${DEXTERMUX_VERSION:-6.0.0}"
+DEXTERMUX_VERSION="${DEXTERMUX_VERSION:-6.1.0}"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
@@ -14,6 +14,10 @@ SSH_PUBKEY="${SSH_PUBKEY:-}"
 SHARED_PASS="${VNC_PASS:-}"
 DESKTOP="${DESKTOP:-cinnamon}"
 PROOT_WANTED="${PROOT:-0}"
+CAST_MODE="${CAST:-0}"
+CAST_KIND="${CAST_KIND:-novnc}"
+CAST_QUALITY="${CAST_QUALITY:-720p}"
+KEYBOARD_LAYOUT="${KEYBOARD:-br}"
 
 STEP_NO=0
 TOTAL_STEPS=0

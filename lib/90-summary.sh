@@ -16,6 +16,12 @@ print_summary() {
 
     section "Resumo"
     row "Desktop" "$(current_desktop)"
+    row "Teclado" "$KEYBOARD_LAYOUT"
+    if [ "$(cat "$H/.dextermux/cast" 2>/dev/null || echo 0)" = "1" ]; then
+        row "Cast (TV)" "ligado, $(cat "$H/.dextermux/cast-mode" 2>/dev/null || echo novnc)"
+    else
+        row "Cast (TV)" "desligado"
+    fi
     row "Processos" "$count / 32 ($verdict)"
     row "Log" "$LOG"
     if proot_installed; then
@@ -25,7 +31,9 @@ print_summary() {
     section "Comandos"
     printf '  %-14s %s\n' "desktop" "sobe/religa os servicos"
     printf '  %-14s %s\n' "url" "bloco de acesso"
-    printf '  %-14s %s\n' "status" "processos, TLS, tunel e desktop"
+    printf '  %-14s %s\n' "status" "processos, memoria, acesso, cast e teclado"
+    printf '  %-14s %s\n' "cast" "on, off, status, url, qr, quality, stream, dlna"
+    printf '  %-14s %s\n' "keyboard" "layout do X: br, abnt2, us ou es"
     printf '  %-14s %s\n' "session" "mostra ou troca cinnamon/xfce"
     printf '  %-14s %s\n' "tunnel" "on, off, status ou url"
     printf '  %-14s %s\n' "password" "troca a senha de VNC/noVNC/SSH"
@@ -53,16 +61,19 @@ print_dry_run() {
     row "Proot" "$([ "$PROOT_WANTED" = "1" ] && echo sim || echo nao)"
     row "Tunel" "$([ "$TUNNEL_MODE" = "1" ] && echo sim || echo nao)"
     row "HTTPS LAN" "$([ "$TLS_MODE" = "1" ] && echo sim || echo nao)"
+    row "Cast (TV)" "$([ "$CAST_MODE" = "1" ] && echo "$CAST_KIND $CAST_QUALITY" || echo nao)"
+    row "Teclado" "$KEYBOARD_LAYOUT"
     row "Geometria" "$GEOMETRY"
     row "Espaco livre" "$DISK_FREE_MB MB"
     printf '\n  Pacotes base: %s\n' "$PKGS_BASE"
     printf '  Pacotes desktop: %s\n' "$(desktop_packages "$DESKTOP")"
     printf '\n  Arquivos gerados: ~/.dextermux/*, ~/.vnc/*, ~/start-desktop.sh,\n'
-    printf '  ~/show-access.sh, ~/.termux/boot/start-services.sh, ~/.bashrc (banner)\n\n'
+    printf '  ~/show-access.sh, ~/.termux/boot/start-services.sh, ~/.bashrc (banner)\n'
+    printf '  ~/noVNC/tv.html, ~/noVNC/remote.html, ~/noVNC/stream.html (cast)\n\n'
 }
 
 run_install() {
-    TOTAL_STEPS=19
+    TOTAL_STEPS=20
     mkdir -p "$H/.dextermux"
     : >"$LOG"
     printf 'dextermux %s - %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
@@ -92,6 +103,11 @@ run_install() {
 
     step "noVNC"
     write_novnc
+
+    step "Cast e teclado"
+    write_cast_mode
+    write_cast_pages
+    write_cast_commands
 
     step "Sessao"
     write_session_mode
@@ -148,7 +164,7 @@ run_install() {
 }
 
 run_repair() {
-    TOTAL_STEPS=8
+    TOTAL_STEPS=9
     : >"$LOG"
     printf 'dextermux %s - reparo %s\n' "$DEXTERMUX_VERSION" "$(date)" >>"$LOG"
 
@@ -172,6 +188,11 @@ run_repair() {
     write_show_access
     write_tls_helper
     write_tunnel_command
+
+    step "Cast e teclado"
+    write_cast_mode
+    write_cast_pages
+    write_cast_commands
 
     step "Banner do shell"
     write_bashrc_block
@@ -233,6 +254,24 @@ ask_tunnel() {
     fi
 }
 
+ask_cast() {
+    if confirm "Ativar cast para TV na LAN (pagina, controle e teclado)?" n; then
+        CAST_MODE=1
+        local choice
+        choice=$(menu "Modo do cast" \
+            "noVNC (interativo, menor banda)" \
+            "MJPEG (navegador de TV simples, sem controle)" \
+            "DLNA (player da TV, alta latencia)")
+        case "$choice" in
+            2) CAST_KIND="mjpeg" ;;
+            3) CAST_KIND="dlna" ;;
+            *) CAST_KIND="novnc" ;;
+        esac
+    else
+        CAST_MODE=0
+    fi
+}
+
 ask_password() {
     local p
     if [ -n "$SHARED_PASS" ]; then return 0; fi
@@ -245,6 +284,8 @@ show_install_plan() {
     row "Desktop" "$DESKTOP (~$(desktop_size "$DESKTOP") MB)"
     row "Proot" "$([ "$PROOT_WANTED" = "1" ] && echo sim || echo nao)"
     row "Tunel" "$([ "$TUNNEL_MODE" = "1" ] && echo sim || echo nao)"
+    row "Cast (TV)" "$([ "$CAST_MODE" = "1" ] && echo "$CAST_KIND $CAST_QUALITY" || echo nao)"
+    row "Teclado" "$KEYBOARD_LAYOUT"
     row "Senha" "$([ -n "$SHARED_PASS" ] && echo definida || echo "gerar aleatoria")"
     row "Espaco livre" "$DISK_FREE_MB MB"
     confirm "Confirmar?" y
@@ -254,6 +295,7 @@ flow_fresh() {
     ask_desktop
     ask_proot
     ask_tunnel
+    ask_cast
     ask_password
     if show_install_plan; then
         run_install
@@ -299,6 +341,7 @@ flow_reinstall() {
     ask_desktop
     ask_proot
     ask_tunnel
+    ask_cast
     ask_password
     if ! show_install_plan; then
         info "cancelado"
@@ -308,6 +351,7 @@ flow_reinstall() {
     if [ "$b2" = "1" ]; then
         export DESKTOP PROOT="$PROOT_WANTED" TUNNEL="$TUNNEL_MODE"
         export VNC_PASS="$SHARED_PASS" SSH_PUBKEY GEOMETRY DEXTERMUX_PREFILLED=1
+        export CAST="$CAST_MODE" CAST_KIND CAST_QUALITY KEYBOARD="$KEYBOARD_LAYOUT"
         reset_home "$@"
         return 0
     fi

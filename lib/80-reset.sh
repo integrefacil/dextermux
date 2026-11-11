@@ -9,7 +9,8 @@ reset_artifacts() {
     sed -i '/# dextermux-start/,/# dextermux-end/d' "$H/.bashrc" 2>/dev/null || true
     rm -rf "$P/var/lib/proot-distro/containers"
     rm -f "$P/bin/desktop" "$P/bin/url" "$P/bin/session" "$P/bin/tls" \
-        "$P/bin/tunnel" "$P/bin/password" "$P/bin/ubuntu" "$P/bin/gui"
+        "$P/bin/tunnel" "$P/bin/password" "$P/bin/ubuntu" "$P/bin/gui" \
+        "$P/bin/cast" "$P/bin/keyboard" "$P/bin/status"
     ok "artefatos removidos"
 }
 
