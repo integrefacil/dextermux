@@ -10,23 +10,24 @@
 
 set -eu
 
-DEXTERMUX_VERSION="6.0.0"
-LIBS_COMMIT="26deb6e3407441b9d5e25237de4c60c663890572"
-LIBS_ORDER="00-common 10-ui 20-detect 30-packages 40-session 50-remote 60-ssh 70-proot 75-tunnel 80-reset 90-summary"
+DEXTERMUX_VERSION="6.1.0"
+LIBS_COMMIT="df84179622fd7897e6c7badf1df3204381676f07"
+LIBS_ORDER="00-common 10-ui 20-detect 30-packages 40-session 50-remote 52-cast 60-ssh 70-proot 75-tunnel 80-reset 90-summary"
 
 lib_sha() {
     case "$1" in
-        00-common.sh) printf '%s' '6c85aede3bb6b73fd02ca4a021bb0d4f5fe0982be1cd3a809542a121a08c8f4c' ;;
-        10-ui.sh) printf '%s' '2bfce2e9ca07e6145f41ce2a8bf6c1b1e6ef79599490ada626d33658bf1a2ce8' ;;
+        00-common.sh) printf '%s' '3496bf05bb43b7f770251bc764832e05c72e37647dd3134b2dc8e2b239e26d0c' ;;
+        10-ui.sh) printf '%s' 'fa872528aef5689fb029906aa6c736f77626dd6c58d465f7045bf6ce4d2842d6' ;;
         20-detect.sh) printf '%s' '0085f5abc462ec613c12e590a92a122e6f3690c2dc227f6246858af07ffaab88' ;;
-        30-packages.sh) printf '%s' '3f042d2f49504fa528ab5336cebbbc4014b71a46980fea6080f1f80996f537d5' ;;
+        30-packages.sh) printf '%s' '6053001bab30cebea89784f6bf9c17d263e4802205728ca8553b09b99ad79083' ;;
         40-session.sh) printf '%s' 'b59e33f02aeeff0214a8ff87c41e56466fc5b2821c21fbbcfd673778841324fa' ;;
-        50-remote.sh) printf '%s' 'a662790c6844db6f7c4008c70bb5f4f51e081a955e51306886f2da3f7538f38a' ;;
+        50-remote.sh) printf '%s' '1dc5ac0b71cece75e4bcb139d1f65c2eb48dbcd91b0e32dedcad4582a5d7c603' ;;
+        52-cast.sh) printf '%s' '259ff23a97d34603d5ffa625fd21b32f2e6d175df4328e75a547362aa1aade97' ;;
         60-ssh.sh) printf '%s' '2b145f7d080cbe15d94579f8a5a57e5270c49f4f64285fc9b87dccc585fc86f6' ;;
         70-proot.sh) printf '%s' 'a49b12f524bf458169a788150c3a8d955f824947f0476874105c4617607750bd' ;;
         75-tunnel.sh) printf '%s' '506904a4e720fd0f7aefb8dd6522e934480d09c81f02f305ce973a6a0551c570' ;;
-        80-reset.sh) printf '%s' '80df83016cf8f075c672fe3b2eed60f56fae5d4f46ae9bec46ee33f54ed11070' ;;
-        90-summary.sh) printf '%s' '50d66e53184f6321212b8c32398fbd17047b13f2982eaf0b4b4b4c0b4d37c116' ;;
+        80-reset.sh) printf '%s' '2a61dc1bf0c457e883b15699272132d99acd75c077c93fa9fa5ff1333d0468b6' ;;
+        90-summary.sh) printf '%s' 'd1641262fdcdf12eaabfe2be13acaafb979d8d888ea10f41bd4a6f2b382d986c' ;;
         *) printf '' ;;
     esac
 }
