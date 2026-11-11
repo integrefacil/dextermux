@@ -94,7 +94,10 @@ pegajosos e valem para a próxima tecla; `Fn` abre `F1` a `F12` e `Home`/`End`/`
 envia a área de transferência do celular para o X.
 
 Gestos do trackpad: toque curto clica, segurar 500 ms sem mover faz clique direito, segurar e
-arrastar move a janela, dois dedos rolam.
+arrastar move a janela, dois dedos rolam. Com `6.2.0` a area de toque mostra o proprio desktop:
+zoom inicial `1:1`, pinça e botoes `-`, `+`, `Ajustar` e `1:1`, e a vista rola junto com o ponteiro
+mantendo-o a 18% da borda. O botao `Abs`/`Rel` alterna entre tocar direto no ponto e usar como
+trackpad relativo.
 
 Chromecast dongle não abre URL arbitrária; nesse caso use o espelhamento de tela do Android com um
 app VNC em primeiro plano.

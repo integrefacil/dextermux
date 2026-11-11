@@ -246,25 +246,33 @@ write_remote_page() {
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>dextermux controle</title>
 <style>
-  :root { color-scheme: dark; }
-  html, body { margin: 0; height: 100%; background: #0f1114; color: #e8e8e8;
+  :root { color-scheme: dark; --bar: 68px; }
+  html, body { margin: 0; height: 100%; background: #000; color: #e8e8e8;
     font-family: system-ui, sans-serif; overflow: hidden; touch-action: none;
     -webkit-user-select: none; user-select: none; }
-  #top { position: fixed; top: 0; left: 0; right: 0; height: 32px; z-index: 6;
-    display: flex; align-items: center; gap: 8px; padding: 0 10px;
-    font-size: 12px; color: #9aa0a6; background: #121417; }
-  #top .dot { width: 9px; height: 9px; border-radius: 50%; background: #b3261e; }
+  #top { position: fixed; top: 0; left: 0; right: 0; height: 32px; z-index: 8;
+    display: flex; align-items: center; gap: 6px; padding: 0 8px;
+    font-size: 12px; color: #9aa0a6; background: #121417; overflow-x: auto;
+    scrollbar-width: none; }
+  #top::-webkit-scrollbar { display: none; }
+  #top .dot { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: #b3261e; }
   #top .dot.on { background: #34a853; }
-  #pos { margin-left: auto; font-variant-numeric: tabular-nums; color: #6b7280; }
-  #preview { position: fixed; right: 8px; top: 40px; width: 168px; height: 95px;
-    border: 1px solid #2c3036; border-radius: 8px; overflow: hidden; z-index: 5; }
-  #preview #screen { width: 100%; height: 100%; }
-  #pad { position: fixed; left: 0; right: 0; top: 32px; bottom: 68px;
-    touch-action: none; -webkit-tap-highlight-color: transparent;
-    background: radial-gradient(circle at 50% 40%, #1b1e23, #0b0c0f); }
-  body.fn #pad { bottom: 122px; }
-  #hint { position: fixed; left: 10px; bottom: 76px; font-size: 11px; color: #5f666f; z-index: 5; }
-  body.fn #hint { display: none; }
+  #zoom { flex: 0 0 auto; color: #cfd4da; font-variant-numeric: tabular-nums; }
+  #pos { flex: 0 0 auto; margin-left: auto; color: #5f666f; font-variant-numeric: tabular-nums; }
+  button.t { flex: 0 0 auto; height: 24px; min-width: 26px; padding: 0 7px;
+    border-radius: 7px; border: 1px solid #2b3037; background: #1d2126;
+    color: #d9dde2; font-size: 11px; font-family: inherit; }
+  button.t:active { background: #2d5c8a; }
+  #view, #pad { position: fixed; left: 0; right: 0; top: 32px; bottom: var(--bar); }
+  body.fn { --bar: 122px; }
+  #view { overflow: hidden; background: #000; pointer-events: none; }
+  #screen { position: absolute; top: 0; left: 0; transform-origin: 0 0;
+    will-change: transform; }
+  #pad { background: transparent; touch-action: none;
+    -webkit-tap-highlight-color: transparent; }
+  #hint { position: fixed; left: 10px; bottom: calc(var(--bar) + 8px); z-index: 6;
+    font-size: 11px; color: #6b7280; pointer-events: none; transition: opacity 1s; }
+  #hint.hide { opacity: 0; }
   #keys { position: fixed; left: 0; right: 0; bottom: 0; z-index: 7;
     background: #15181c; border-top: 1px solid #23272d;
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
@@ -284,10 +292,19 @@ write_remote_page() {
 </style>
 </head>
 <body>
-<div id="top"><span class="dot" id="dot"></span><span id="state">conectando</span><span id="pos"></span></div>
-<div id="preview"><div id="screen"></div></div>
+<div id="top">
+  <span class="dot" id="dot"></span><span id="state">conectando</span>
+  <span id="zoom">100%</span>
+  <button class="t" id="zoom-out" type="button">-</button>
+  <button class="t" id="zoom-in" type="button">+</button>
+  <button class="t" id="zoom-fit" type="button">Ajustar</button>
+  <button class="t" id="zoom-one" type="button">1:1</button>
+  <button class="t" id="mode" type="button">Abs</button>
+  <span id="pos"></span>
+</div>
+<div id="view"><div id="screen"></div></div>
 <div id="pad"></div>
-<div id="hint">arraste para mover, toque para clicar, segure para clique direito, segure e arraste para mover janela</div>
+<div id="hint">arraste para mover o ponteiro, segure para clique direito, dois dedos rolam e pinca amplia</div>
 <textarea id="kbd" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" aria-hidden="true"></textarea>
 <div id="keys">
   <div class="row" id="row1"></div>
@@ -305,23 +322,30 @@ let fbH = parseInt(geom[1], 10) || 900;
 
 const screen = document.getElementById('screen');
 const pad = document.getElementById('pad');
-const state = document.getElementById('state');
+const stateEl = document.getElementById('state');
 const dot = document.getElementById('dot');
+const zoomEl = document.getElementById('zoom');
+const posEl = document.getElementById('pos');
 const row1 = document.getElementById('row1');
 const row2 = document.getElementById('row2');
 const kbd = document.getElementById('kbd');
+const hint = document.getElementById('hint');
 
 let rfb = null;
-let px = Math.round(fbW / 2);
-let py = Math.round(fbH / 2);
+let zoom = 1;
+let viewX = 0;
+let viewY = 0;
+let px = 0;
+let py = 0;
+let mode = localStorage.getItem('dx.mode') === 'rel' ? 'rel' : 'abs';
 let dragging = false;
 let holdReady = false;
 let holdTimer = null;
 let startPt = null;
 let lastPt = null;
 let moved = false;
-let scrollLast = null;
-let scrollActive = false;
+let pinch = null;
+let twoFinger = false;
 let lastTouchAt = 0;
 
 const KEYS = {
@@ -335,15 +359,115 @@ for (let i = 1; i <= 12; i++) KEYS['F' + i] = 0xffbe + (i - 1);
 const sticky = new Set();
 const stickyButtons = new Map();
 
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
 function setState(text, on) {
-  state.textContent = text;
+  stateEl.textContent = text;
   dot.classList.toggle('on', !!on);
 }
 
 function showPos() {
-  document.getElementById('pos').textContent = Math.round(px) + ',' + Math.round(py);
+  posEl.textContent = Math.round(px) + ',' + Math.round(py);
 }
 
+function fitZoom() {
+  const vw = pad.clientWidth || 1;
+  const vh = pad.clientHeight || 1;
+  return Math.min(vw / fbW, vh / fbH);
+}
+
+function minZoom() { return Math.min(fitZoom(), 1); }
+
+function clampView() {
+  const vw = pad.clientWidth || 1;
+  const vh = pad.clientHeight || 1;
+  const cw = fbW * zoom;
+  const ch = fbH * zoom;
+  viewX = cw <= vw ? (cw - vw) / 2 : clamp(viewX, 0, cw - vw);
+  viewY = ch <= vh ? (ch - vh) / 2 : clamp(viewY, 0, ch - vh);
+}
+
+function applyView() {
+  screen.style.transform =
+    'translate(' + (-viewX).toFixed(2) + 'px,' + (-viewY).toFixed(2) + 'px) scale(' + zoom.toFixed(4) + ')';
+  zoomEl.textContent = Math.round(zoom * 100) + '%';
+}
+
+function layout() {
+  zoom = clamp(zoom, minZoom(), 4);
+  clampView();
+  applyView();
+}
+
+function zoomAt(ax, ay, target) {
+  const z = clamp(target, minZoom(), 4);
+  const fbX = (ax + viewX) / zoom;
+  const fbY = (ay + viewY) / zoom;
+  zoom = z;
+  viewX = fbX * zoom - ax;
+  viewY = fbY * zoom - ay;
+  clampView();
+  applyView();
+}
+
+// mantem o ponteiro dentro da margem de 18% rolando a vista
+function follow() {
+  const vw = pad.clientWidth || 1;
+  const vh = pad.clientHeight || 1;
+  const m = 0.18;
+  const sx = px * zoom - viewX;
+  const sy = py * zoom - viewY;
+  if (sx < vw * m) viewX = px * zoom - vw * m;
+  else if (sx > vw * (1 - m)) viewX = px * zoom - vw * (1 - m);
+  if (sy < vh * m) viewY = py * zoom - vh * m;
+  else if (sy > vh * (1 - m)) viewY = py * zoom - vh * (1 - m);
+  clampView();
+  applyView();
+}
+
+function pointer(mask) {
+  if (!rfb || typeof rfb._sendMouse !== 'function') return;
+  rfb._sendMouse(Math.round(px), Math.round(py), mask);
+  showPos();
+}
+
+function pointerFromView(sx, sy) {
+  px = clamp((sx + viewX) / zoom, 0, fbW - 1);
+  py = clamp((sy + viewY) / zoom, 0, fbH - 1);
+}
+
+function moveBy(dx, dy) {
+  px = clamp(px + dx, 0, fbW - 1);
+  py = clamp(py + dy, 0, fbH - 1);
+  pointer(dragging ? 1 : 0);
+  follow();
+}
+
+function click(button) {
+  pointer(button === 'right' ? 4 : 1);
+  setTimeout(() => pointer(dragging ? 1 : 0), 60);
+}
+
+function wheel(dy) {
+  if (!dy) return;
+  pointer(dy < 0 ? 8 : 16);
+  setTimeout(() => pointer(dragging ? 1 : 0), 40);
+}
+
+function buzz(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
+
+function padPoint(t) {
+  const r = pad.getBoundingClientRect();
+  return { x: t.clientX - r.left, y: t.clientY - r.top };
+}
+
+function setMode(next) {
+  mode = next;
+  localStorage.setItem('dx.mode', mode);
+  document.getElementById('mode').textContent = mode === 'abs' ? 'Abs' : 'Rel';
+}
+
+// ---------- teclado ----------
 function codeFor(name) {
   if (name.length === 1 && /[a-z]/i.test(name)) return 'Key' + name.toUpperCase();
   if (name.length === 1 && /[0-9]/.test(name)) return 'Digit' + name;
@@ -365,7 +489,6 @@ function keyUp(name) {
   rfb.sendKey(KEYS[name] || keysymFor(name), codeFor(name), false);
 }
 
-// modificador pegajoso: vale para a proxima tecla e volta ao estado neutro
 function releaseSticky() {
   for (const name of sticky) {
     if (rfb) rfb.sendKey(KEYS[name], name, false);
@@ -394,178 +517,14 @@ function toggleSticky(name) {
     sticky.add(name);
     if (btn) btn.classList.add('on');
   }
-  if (navigator.vibrate) navigator.vibrate(12);
+  buzz(12);
 }
 
-function screenCanvas() { return screen.querySelector('canvas'); }
-
-// noVNC 1.5 nao expoe sendPointer e o container do canvas precisa ter tamanho:
-// sem isso _scale fica 0 e absX() devolve 0. _sendMouse recebe CSS do canvas e
-// converte para o framebuffer, sem passar pelo capture proxy de mousedown.
-function pointer(mask) {
-  if (!rfb) return;
-  const c = screenCanvas();
-  if (!c) return;
-  const r = c.getBoundingClientRect();
-  if (!r.width || !r.height) return;
-  const cx = (px / fbW) * r.width;
-  const cy = (py / fbH) * r.height;
-  if (typeof rfb._sendMouse === 'function') {
-    rfb._sendMouse(cx, cy, mask);
-    showPos();
-    return;
-  }
-  const box = {
-    clientX: r.left + cx, clientY: r.top + cy,
-    bubbles: true, cancelable: true, view: window,
-  };
-  c.dispatchEvent(new MouseEvent(mask === 0 ? 'mousemove' : 'mousedown', box));
-  if (mask !== 0) {
-    setTimeout(() => c.dispatchEvent(new MouseEvent('mouseup', box)), 60);
-  }
-  showPos();
-}
-
-function maskFromButtons(buttons) {
-  let m = 0;
-  if (buttons & 1) m |= 1;
-  if (buttons & 2) m |= 4;
-  if (buttons & 4) m |= 2;
-  return m;
-}
-
-function move(dx, dy) {
-  px = Math.min(fbW - 1, Math.max(0, px + dx));
-  py = Math.min(fbH - 1, Math.max(0, py + dy));
-  pointer(dragging ? 1 : 0);
-}
-
-function click(button) {
-  const mask = button === 'right' ? 4 : 1;
-  pointer(mask);
-  setTimeout(() => pointer(dragging ? 1 : 0), 60);
-}
-
-function wheel(dy) {
-  if (!dy) return;
-  pointer(dy < 0 ? 8 : 16);
-  setTimeout(() => pointer(dragging ? 1 : 0), 40);
-}
-
-function isTouchRecent() { return Date.now() - lastTouchAt < 700; }
-
-function buzz(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
-
-pad.addEventListener('touchstart', (ev) => {
-  lastTouchAt = Date.now();
-  if (ev.touches.length === 2) {
-    scrollActive = true;
-    scrollLast = ev.touches[0].clientY;
-    lastPt = null;
-    return;
-  }
-  const t = ev.touches[0];
-  startPt = { x: t.clientX, y: t.clientY };
-  lastPt = { x: t.clientX, y: t.clientY };
-  moved = false;
-  dragging = false;
-  holdReady = false;
-  clearTimeout(holdTimer);
-  holdTimer = setTimeout(() => {
-    holdReady = true;
-    buzz(15);
-  }, 500);
-}, { passive: true });
-
-pad.addEventListener('touchmove', (ev) => {
-  ev.preventDefault();
-  lastTouchAt = Date.now();
-  if (ev.touches.length === 2) {
-    const y = ev.touches[0].clientY;
-    if (scrollLast !== null) wheel((scrollLast - y) * 8);
-    scrollLast = y;
-    return;
-  }
-  const t = ev.touches[0];
-  if (!lastPt) lastPt = { x: t.clientX, y: t.clientY };
-  if (startPt && Math.hypot(t.clientX - startPt.x, t.clientY - startPt.y) > 8) {
-    moved = true;
-    if (!holdReady) { clearTimeout(holdTimer); holdTimer = null; }
-    else if (!dragging) {
-      dragging = true;
-      pointer(1);
-    }
-  }
-  const dx = (t.clientX - lastPt.x) * (fbW / Math.max(1, pad.clientWidth));
-  const dy = (t.clientY - lastPt.y) * (fbH / Math.max(1, pad.clientHeight));
-  lastPt = { x: t.clientX, y: t.clientY };
-  move(dx, dy);
-}, { passive: false });
-
-pad.addEventListener('touchend', (ev) => {
-  lastTouchAt = Date.now();
-  clearTimeout(holdTimer);
-  holdTimer = null;
-  if (ev.touches.length > 0) return;
-  if (scrollActive) {
-    scrollActive = false;
-    scrollLast = null;
-    startPt = null;
-    lastPt = null;
-    return;
-  }
-  if (dragging) {
-    pointer(0);
-    dragging = false;
-  } else if (holdReady) {
-    click('right');
-  } else if (!moved) {
-    click('left');
-  }
-  holdReady = false;
-  startPt = null;
-  lastPt = null;
-  scrollLast = null;
-}, { passive: true });
-
-pad.addEventListener('mousemove', (ev) => {
-  if (isTouchRecent()) return;
-  const r = pad.getBoundingClientRect();
-  if (!r.width || !r.height) return;
-  px = Math.min(fbW - 1, Math.max(0, ((ev.clientX - r.left) / r.width) * fbW));
-  py = Math.min(fbH - 1, Math.max(0, ((ev.clientY - r.top) / r.height) * fbH));
-  pointer(maskFromButtons(ev.buttons));
-});
-
-pad.addEventListener('mousedown', (ev) => {
-  if (isTouchRecent()) return;
-  pointer(maskFromButtons(ev.buttons || (ev.button === 2 ? 2 : 1)));
-});
-
-pad.addEventListener('mouseup', (ev) => {
-  if (isTouchRecent()) return;
-  pointer(maskFromButtons(ev.buttons));
-});
-
-pad.addEventListener('contextmenu', (ev) => { ev.preventDefault(); });
-
-// teclado virtual: o textarea invisivel levanta o teclado do Android e cada
-// caractere confirmado vira keysym no X
 function openKeyboard() {
   kbd.value = '';
   kbd.focus();
   buzz(10);
 }
-
-kbd.addEventListener('beforeinput', (ev) => {
-  if (ev.inputType === 'deleteContentBackward') {
-    ev.preventDefault();
-    keyTap('BackSpace');
-  } else if (ev.inputType === 'insertLineBreak' || ev.inputType === 'insertParagraph') {
-    ev.preventDefault();
-    keyTap('Enter');
-  }
-});
 
 function sendChar(ch) {
   if (!rfb) return;
@@ -577,6 +536,16 @@ function sendChar(ch) {
     releaseSticky();
   }, 25);
 }
+
+kbd.addEventListener('beforeinput', (ev) => {
+  if (ev.inputType === 'deleteContentBackward') {
+    ev.preventDefault();
+    keyTap('BackSpace');
+  } else if (ev.inputType === 'insertLineBreak' || ev.inputType === 'insertParagraph') {
+    ev.preventDefault();
+    keyTap('Enter');
+  }
+});
 
 kbd.addEventListener('input', () => {
   const text = kbd.value;
@@ -642,7 +611,10 @@ for (const [label, name] of [['\u25C0', 'ArrowLeft'], ['\u25B2', 'ArrowUp'],
 
 addButton(row1, 'Clique', () => click('left'), { wide: true });
 addButton(row1, 'Dir.click', () => click('right'), { wide: true });
-addButton(row1, 'Fn', () => document.body.classList.toggle('fn'));
+addButton(row1, 'Fn', () => {
+  document.body.classList.toggle('fn');
+  setTimeout(layout, 0);
+});
 
 for (let i = 1; i <= 12; i++) addButton(row2, 'F' + i, () => keyTap('F' + i));
 for (const [label, name] of [['Home', 'Home'], ['End', 'End'],
@@ -673,26 +645,160 @@ window.addEventListener('keyup', (ev) => {
   else if (KEYS[ev.code]) keyUp(ev.code);
 });
 
+// ---------- gestos ----------
+pad.addEventListener('touchstart', (ev) => {
+  lastTouchAt = Date.now();
+  hint.classList.add('hide');
+  if (ev.touches.length >= 2) {
+    twoFinger = true;
+    pinch = null;
+    lastPt = null;
+    return;
+  }
+  const p = padPoint(ev.touches[0]);
+  startPt = p;
+  lastPt = p;
+  moved = false;
+  dragging = false;
+  holdReady = false;
+  if (mode === 'abs') {
+    pointerFromView(p.x, p.y);
+    pointer(0);
+  }
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => {
+    holdReady = true;
+    pointer(dragging ? 1 : 0);
+    buzz(15);
+  }, 500);
+}, { passive: true });
+
+pad.addEventListener('touchmove', (ev) => {
+  ev.preventDefault();
+  lastTouchAt = Date.now();
+  if (ev.touches.length >= 2) {
+    const p0 = padPoint(ev.touches[0]);
+    const p1 = padPoint(ev.touches[1]);
+    const d = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+    const cx = (p0.x + p1.x) / 2;
+    const cy = (p0.y + p1.y) / 2;
+    if (pinch) {
+      const ratio = pinch.d > 6 ? d / pinch.d : 1;
+      zoomAt(cx, cy, zoom * ratio);
+      viewX -= cx - pinch.cx;
+      viewY -= cy - pinch.cy;
+      clampView();
+      applyView();
+    }
+    pinch = { d, cx, cy };
+    return;
+  }
+  const t = ev.touches[0];
+  if (!lastPt) lastPt = padPoint(t);
+  const p = padPoint(t);
+  if (startPt && Math.hypot(p.x - startPt.x, p.y - startPt.y) > 8) {
+    moved = true;
+    if (!holdReady) { clearTimeout(holdTimer); holdTimer = null; }
+    else if (!dragging) {
+      dragging = true;
+      pointer(1);
+    }
+  }
+  if (mode === 'abs') {
+    pointerFromView(p.x, p.y);
+    pointer(dragging ? 1 : 0);
+    follow();
+  } else {
+    moveBy((p.x - lastPt.x) / zoom, (p.y - lastPt.y) / zoom);
+  }
+  lastPt = p;
+}, { passive: false });
+
+pad.addEventListener('touchend', (ev) => {
+  lastTouchAt = Date.now();
+  clearTimeout(holdTimer);
+  holdTimer = null;
+  if (ev.touches.length > 0) return;
+  if (twoFinger) {
+    twoFinger = false;
+    pinch = null;
+    startPt = null;
+    lastPt = null;
+    return;
+  }
+  if (dragging) {
+    pointer(0);
+    dragging = false;
+  } else if (holdReady) {
+    click('right');
+  } else if (!moved) {
+    click('left');
+  }
+  holdReady = false;
+  startPt = null;
+  lastPt = null;
+}, { passive: true });
+
+// mouse fisico: posicao absoluta na area visivel
+pad.addEventListener('mousemove', (ev) => {
+  if (Date.now() - lastTouchAt < 700) return;
+  const p = padPoint(ev);
+  pointerFromView(p.x, p.y);
+  pointer(ev.buttons ? 1 : 0);
+});
+pad.addEventListener('mousedown', (ev) => {
+  if (Date.now() - lastTouchAt < 700) return;
+  const p = padPoint(ev);
+  pointerFromView(p.x, p.y);
+  pointer(ev.button === 2 ? 4 : 1);
+});
+pad.addEventListener('mouseup', () => {
+  if (Date.now() - lastTouchAt < 700) return;
+  pointer(0);
+});
+pad.addEventListener('contextmenu', (ev) => { ev.preventDefault(); });
+
+// ---------- controles de zoom ----------
+const center = () => [pad.clientWidth / 2, pad.clientHeight / 2];
+document.getElementById('zoom-out').addEventListener('click', () => zoomAt(...center(), zoom / 1.25));
+document.getElementById('zoom-in').addEventListener('click', () => zoomAt(...center(), zoom * 1.25));
+document.getElementById('zoom-fit').addEventListener('click', () => {
+  zoomAt(...center(), fitZoom());
+  clampView();
+  applyView();
+});
+document.getElementById('zoom-one').addEventListener('click', () => zoomAt(...center(), 1));
+document.getElementById('mode').addEventListener('click', () => setMode(mode === 'abs' ? 'rel' : 'abs'));
+setMode(mode);
+
+window.addEventListener('resize', layout);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', layout);
+
 if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
 
 function connect() {
   rfb = new RFB(screen, url, {
     credentials: params.get('password') ? { password: params.get('password') } : undefined,
   });
-  rfb.scaleViewport = true;
+  rfb.scaleViewport = false;
   rfb.resizeSession = false;
   rfb.clipViewport = false;
   rfb.viewOnly = false;
-  rfb.focusOnClick = true;
+  rfb.focusOnClick = false;
   rfb.addEventListener('connect', () => {
     setState('conectado', true);
     const canvas = screen.querySelector('canvas');
     if (canvas && canvas.width && canvas.height) {
       fbW = canvas.width;
       fbH = canvas.height;
-      px = Math.round(fbW / 2);
-      py = Math.round(fbH / 2);
     }
+    zoom = 1;
+    viewX = 0;
+    viewY = 0;
+    px = Math.round((viewX + (pad.clientWidth || fbW) / 2) / zoom);
+    py = Math.round((viewY + (pad.clientHeight || fbH) / 2) / zoom);
+    layout();
+    pointer(0);
   });
   rfb.addEventListener('credentialsrequired', () => {
     const pass = prompt('senha do VNC');

@@ -243,3 +243,18 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
 
 - **Correcao**: o texto do teclado virtual tambem passa pelos modificadores pegajosos, entao
   `Ctrl` mais letra digitada no teclado do Android funciona como atalho.
+
+## 28. remote.html como tela cheia com zoom (2026-11-11)
+
+- **Fato**: o noVNC 1.5 tem recorte proprio (`clipViewport`, `dragViewport`), mas usa `_viewportLoc`
+  privado e para de enviar ponteiro durante o arrasto.
+- **Decisao**: `scaleViewport` e `clipViewport` desligados, canvas no tamanho real do framebuffer e
+  zoom/pan por `transform: translate(...) scale(...)`; assim `_scale` fica 1 e `_sendMouse(px, py)`
+  recebe pixel do framebuffer direto.
+- **Decisao**: o `#pad` passou a ser uma camada transparente sobre o canvas, senao os handlers do
+  proprio noVNC competiriam com os gestos.
+- **Decisao**: dois modos de toque (A3): absoluto estilo AnyDesk e relativo estilo trackpad, com
+  botao `Abs`/`Rel` persistido em `localStorage`.
+- **Decisao**: zoom inicial 1:1 (B3), pinça, botoes `-`, `+`, `Ajustar` e `1:1`, e follow com margem
+  de 18% (C1).
+- **Decisao**: sem duplo toque para zoom, para nao atrasar nem duplicar o clique simples.

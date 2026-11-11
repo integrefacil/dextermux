@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # 00-common - constantes, UI basica, log e utilitarios
 
-DEXTERMUX_VERSION="${DEXTERMUX_VERSION:-6.1.5}"
+DEXTERMUX_VERSION="${DEXTERMUX_VERSION:-6.2.0}"
 
 P="${PREFIX:-/data/data/com.termux/files/usr}"
 H="$HOME"
