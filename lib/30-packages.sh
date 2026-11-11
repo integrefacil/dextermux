@@ -89,7 +89,7 @@ audit_dpkg() {
 cleanup_legacy() {
     # remove artefatos de versoes anteriores (v2..v5)
     rm -f "$H/.dextermux/theme.sh" "$H/.dextermux/wallpaper.svg" \
-        "$H/.dextermux/status.sh" "$H/.dextermux/dev.sh" \
+        "$H/.dextermux/dev.sh" \
         "$H/.dextermux/ubuntu.sh" "$H/.dextermux/gui.sh" \
         "$H/.dextermux/session-manager.sh"
     rm -f "$P/bin/dextermux-theme" "$P/bin/dextermux-status" \

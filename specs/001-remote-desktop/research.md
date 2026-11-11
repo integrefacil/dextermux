@@ -2,9 +2,6 @@
 
 Registro das investigacoes que levaram ao `setup.sh`. Cada item tem sintoma, causa e decisao.
 
-> **Leitura:** os itens 1-13 continuam validos. Os itens 14-22 sao **historicos** (presets,
-> Xubuntu, proot dev) e foram substituidos pela v6. O estado atual esta no item 23.
-
 ## 1. sshd nao aceita conexao (timeout)
 
 - **Sintoma**: `ssh user@ip -p 8022` fica "piscando" e termina em `Connection timed out`.

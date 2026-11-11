@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dextermux - desktop remoto no Termux</title>
-<meta name="description" content="Desktop remoto no Termux com Cinnamon ou XFCE, VNC, noVNC por HTTPS e SSH, com instalador modular e interativo.">
+<meta name="description" content="XFCE4 remoto no Termux com VNC, noVNC por HTTPS e SSH, instalado com um comando.">
 <style>
   :root {
     --bg: #0b1020;
@@ -152,13 +152,39 @@
         <tr><th>Comando</th><th>Efeito</th></tr>
         <tr><td><code class="inline">desktop</code></td><td>Sobe/religa os servicos.</td></tr>
         <tr><td><code class="inline">url</code></td><td>Imprime o bloco de acesso.</td></tr>
-        <tr><td><code class="inline">status</code></td><td>Processos, TLS, tunel e desktop.</td></tr>
+        <tr><td><code class="inline">status</code></td><td>Processos, memoria, acesso, cast e teclado.</td></tr>
+        <tr><td><code class="inline">cast on</code></td><td>Liga o cast para a TV na LAN e mostra as URLs.</td></tr>
+        <tr><td><code class="inline">cast qr</code></td><td>Mostra a URL da TV em QR Code.</td></tr>
+        <tr><td><code class="inline">cast stream on</code></td><td>Liga o modo MJPEG para navegador de TV simples.</td></tr>
+        <tr><td><code class="inline">cast dlna</code></td><td>Envia o desktop para o player DLNA da TV.</td></tr>
+        <tr><td><code class="inline">keyboard abnt2</code></td><td>Aplica o layout do teclado fisico/Bluetooth no X.</td></tr>
         <tr><td><code class="inline">session xfce</code></td><td>Troca o ambiente sem apagar.</td></tr>
         <tr><td><code class="inline">tunnel on</code></td><td>Liga o Cloudflare e mostra a URL.</td></tr>
         <tr><td><code class="inline">password</code></td><td>Troca a senha de VNC/noVNC/SSH.</td></tr>
         <tr><td><code class="inline">tls renew</code></td><td>Regenera o certificado da LAN.</td></tr>
         <tr><td><code class="inline">gui APP</code></td><td>App do Ubuntu no desktop (proot).</td></tr>
       </table>
+    </section>
+
+    <section id="tv">
+      <h2>TV na mesma rede</h2>
+      <table>
+        <tr><th>Modo</th><th>Como funciona</th><th>Controle</th></tr>
+        <tr><td>noVNC (padrao)</td><td>A TV abre <code class="inline">tv.html</code> no navegador e recebe a sessao do Xvnc.</td><td>celular em <code class="inline">remote.html</code> ou controle remoto</td></tr>
+        <tr><td>MJPEG</td><td>O <code class="inline">ffmpeg</code> captura o display e serve <code class="inline">stream.html</code>.</td><td>nenhum</td></tr>
+        <tr><td>DLNA</td><td>O player da TV puxa um MPEG-TS via <code class="inline">SetAVTransportURI</code>.</td><td>nenhum, latencia de 1 a 5 s</td></tr>
+      </table>
+      <div class="note" style="margin-top:16px">
+        <b>Certificado autoassinado.</b> Se o navegador da TV recusar o HTTPS, use
+        <code class="inline">http://&lt;ip&gt;:6081/tv.html</code>. Nesse modo a senha do VNC trafega sem
+        criptografia na LAN.
+      </div>
+      <div class="note" style="margin-top:16px">
+        <b>Teclado e mouse Bluetooth.</b> Pareie no aparelho que vai receber o input: no celular com
+        Termux, para controlar pelo <code class="inline">remote.html</code>; ou na TV, se o navegador dela
+        for o cliente. O Linux nao pareia Bluetooth; o Android dono do adaptador faz isso.
+        Depois aplique o layout com <code class="inline">keyboard abnt2</code>.
+      </div>
     </section>
 
     <section id="acesso">

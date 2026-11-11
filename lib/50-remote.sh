@@ -20,6 +20,15 @@ fi
 vncserver :1 -geometry __GEOMETRY__ -depth 24 -localhost no -SecurityTypes VncAuth 2>/dev/null
 sleep 2
 
+# layout do teclado fisico/Bluetooth no X
+LAYOUT=$(cat "$DIR/keyboard" 2>/dev/null || echo br)
+if command -v setxkbmap >/dev/null 2>&1; then
+    case "$LAYOUT" in
+        abnt2) DISPLAY=:1 setxkbmap -layout br -variant abnt2 2>/dev/null || true ;;
+        *) DISPLAY=:1 setxkbmap -layout "$LAYOUT" 2>/dev/null || true ;;
+    esac
+fi
+
 TLS=$(cat "$DIR/tls/mode" 2>/dev/null || echo 0)
 if [ "$TLS" = "1" ] && [ -x "$DIR/tls.sh" ]; then
     "$DIR/tls.sh" ensure >/dev/null 2>&1 || true
@@ -52,6 +61,34 @@ if [ -z "$WS_PID" ]; then
     setsid websockify --web="$HOME/noVNC" $WS_ARGS "$PORT" "localhost:$VNCPORT" >"$TMPDIR/ws-$PORT.log" 2>&1 </dev/null &
 fi
 sleep 2
+
+# cast para TV na LAN
+CAST=$(cat "$DIR/cast" 2>/dev/null || echo 0)
+CASTMODE=$(cat "$DIR/cast-mode" 2>/dev/null || echo novnc)
+CASTPORT=6081
+CASTSCALE=1280:-2
+if [ "$(cat "$DIR/cast-quality" 2>/dev/null || echo 720p)" = "1080p" ]; then
+    CASTSCALE=1920:-2
+fi
+
+if [ "$CAST" = "1" ] && [ "$WANT_TLS" = "1" ]; then
+    # porta HTTP extra: navegador de TV costuma recusar certificado autoassinado
+    if ! pgrep -f "[w]ebsockify.*$CASTPORT" >/dev/null; then
+        setsid websockify --web="$HOME/noVNC" "$CASTPORT" "localhost:$VNCPORT" >"$TMPDIR/ws-$CASTPORT.log" 2>&1 </dev/null &
+    fi
+else
+    pkill -f "[w]ebsockify.*$CASTPORT" 2>/dev/null || true
+fi
+
+if [ "$CAST" = "1" ] && [ "$CASTMODE" = "mjpeg" ] && command -v ffmpeg >/dev/null 2>&1; then
+    if ! pgrep -f "[f]fmpeg.*6082" >/dev/null; then
+        setsid ffmpeg -hide_banner -loglevel error -f x11grab -framerate 20 -i :1 \
+            -vf "scale=$CASTSCALE" -c:v mjpeg -q:v 7 -f mpjpeg -listen 1 \
+            "http://0.0.0.0:6082/live.mjpg" >"$TMPDIR/cast-mjpeg.log" 2>&1 </dev/null &
+    fi
+else
+    pkill -f "[f]fmpeg.*6082" 2>/dev/null || true
+fi
 
 TUNNEL=$(cat "$DIR/tunnel" 2>/dev/null || echo 0)
 CF_PID=$(pgrep -f "[c]loudflared tunnel" | head -1 || true)
@@ -117,6 +154,15 @@ if pgrep -f "[w]ebsockify" >/dev/null; then
 else
     echo "noVNC:        parado (rode: desktop)"
 fi
+CAST=$(cat "$HOME/.dextermux/cast" 2>/dev/null || echo 0)
+if [ "$CAST" = "1" ]; then
+    echo "TV:           $SCHEME://$IP:6080/tv.html"
+    if [ "$TLS" = "1" ]; then
+        echo "TV sem cert:  http://$IP:6081/tv.html"
+    fi
+    echo "Controle:     $SCHEME://$IP:6080/remote.html"
+fi
+echo "Teclado:      $(cat "$HOME/.dextermux/keyboard" 2>/dev/null || echo br)"
 U=$(grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" "$TMPDIR/cf.log" 2>/dev/null | tail -1)
 [ -z "$U" ] && U=$(cat "$HOME/tunnel-url.txt" 2>/dev/null)
 if pgrep -f "[c]loudflared tunnel" >/dev/null; then
