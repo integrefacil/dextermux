@@ -227,3 +227,16 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
   com coordenadas CSS do canvas, sem eventos de mouse e sem capture proxy. O caminho DOM fica como
   reserva.
 - **Diagnostico**: o topo do `remote.html` mostra as coordenadas atuais, provando se o gesto chega.
+
+## 27. usabilidade do remote.html (2026-11-11)
+
+- **Fato**: sem teclado externo o usuario nao conseguia digitar; noVNC 1.5 nao abre teclado virtual
+  sozinho, porque o canvas nao e um campo de texto.
+- **Decisao**: `textarea` invisivel focado pelo botao Teclado; `input` e `beforeinput` viram
+  `sendKey` com keysym do caractere, e o teclado fisico continua pelo handler de janela.
+- **Decisao**: modificadores pegajosos de um toque (Ctrl, Alt, Shift, Super), liberados depois da
+  proxima tecla, com estado visual no botao.
+- **Decisao**: gestos redefinidos: toque curto clica, segurar 500 ms sem mover faz clique direito,
+  segurar e arrastar move janela, dois dedos rolam, dois dedos no fim nao clica.
+- **Decisao**: barra de teclas em duas linhas rolaveis, com botao Fn para F1-F12, Home/End/PgUp/PgDn,
+  e botao Colar via `clipboardPasteFrom`.
