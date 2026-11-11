@@ -190,3 +190,15 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
 - **Fato**: snap/Flatpak exigem systemd e nao funcionam no proot.
 - **Decisao**: interativo com TTY; `--yes` para automacao; B1/B2 para reset; `session` troca sem apagar; `tunnel` sob demanda; senha unica de 8; bloco de acesso unico.
 - **Decisao**: proot apenas como runtime de apps glibc, sem dev.
+
+## 24. reset do $HOME parava sem instalar (2026-11-11)
+
+- **Sintoma**: escolher "Reinstalar do zero" com wipe do `$HOME` mostrava "apagando rootfs e todo o
+  conteudo de $HOME" e o script terminava no prompt, sem erro e sem instalar nada.
+- **Causa**: `reset_home` copiava `${BASH_SOURCE[0]}` para `$TMPDIR/dextermux-reset.sh`. Depois da
+  modularizacao da v6, `BASH_SOURCE[0]` dentro da funcao aponta para `lib/80-reset.sh`, nao para o
+  `setup.sh`. O `exec` rodava uma copia da lib, que apenas define funcoes e sai.
+- **Decisao**: o bootstrap exporta `DEXTERMUX_SELF` com o caminho absoluto do instalador, e
+  `reset_home` valida a copia (`bash -n`, `LIBS_ORDER=`, `main "$@"`) antes de apagar qualquer coisa.
+- **Risco**: a versao 6.1.0 apagava o `$HOME` antes de descobrir o problema; a validacao passa a
+  ocorrer antes do wipe.

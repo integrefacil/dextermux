@@ -18,13 +18,19 @@ reset_home() {
     if [ "${DEXTERMUX_RESET_DONE:-0}" = "1" ]; then
         return 0
     fi
-    local self="${BASH_SOURCE[0]:-}" tmp
+    # BASH_SOURCE aqui aponta para esta lib, nao para o setup.sh; o bootstrap exporta o caminho real
+    local self="${DEXTERMUX_SELF:-}" tmp
     if [ -z "$self" ] || [ ! -f "$self" ]; then
         die "reset do \$HOME exige rodar o setup.sh como arquivo"
     fi
     tmp="$TMPDIR/dextermux-reset.sh"
     cp "$self" "$tmp"
     chmod +x "$tmp"
+    if ! bash -n "$tmp" 2>/dev/null || ! grep -q 'LIBS_ORDER=' "$tmp" \
+        || ! grep -q 'main "\$@"' "$tmp"; then
+        rm -f "$tmp"
+        die "copia do instalador invalida; nada foi apagado"
+    fi
     info "apagando rootfs e todo o conteudo de \$HOME"
     rm -rf "$P/var/lib/proot-distro/containers"
     find "$H" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
