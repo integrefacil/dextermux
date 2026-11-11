@@ -202,3 +202,15 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
   `reset_home` valida a copia (`bash -n`, `LIBS_ORDER=`, `main "$@"`) antes de apagar qualquer coisa.
 - **Risco**: a versao 6.1.0 apagava o `$HOME` antes de descobrir o problema; a validacao passa a
   ocorrer antes do wipe.
+
+## 25. remote.html nao movia o ponteiro (2026-11-11)
+
+- **Sintoma**: no `remote.html` as teclas funcionavam, mas arrastar a area de toque nao movia o
+  ponteiro do X.
+- **Causa**: a pagina chamava `rfb.sendPointer(x, y, mask)`, que **nao existe** no noVNC 1.5.0. A
+  API publica tem `sendKey`, `sendCredentials` e `clipboardPasteFrom`; ponteiro e interno
+  (`_sendMouse`). O `TypeError` estourava dentro do handler e matava o gesto.
+- **Decisao**: despachar eventos de mouse sinteticos no canvas do proprio RFB, que converte em
+  PointerEvent do protocolo VNC pelo caminho publico (`clientToElement` + `absX`).
+- **Extras**: toque curto clica, segurar 450 ms e arrastar move janela, dois dedos rolam, mouse
+  fisico mapeia posicao absoluta e botoes Clique/Dir na barra.

@@ -10,19 +10,19 @@
 
 set -eu
 
-DEXTERMUX_VERSION="6.1.1"
-LIBS_COMMIT="a190fc436cf3e5fce27ccdb18b3174e83109200a"
+DEXTERMUX_VERSION="6.1.2"
+LIBS_COMMIT="37c3cfe97816b803b99906114c5676a02e49797f"
 LIBS_ORDER="00-common 10-ui 20-detect 30-packages 40-session 50-remote 52-cast 60-ssh 70-proot 75-tunnel 80-reset 90-summary"
 
 lib_sha() {
     case "$1" in
-        00-common.sh) printf '%s' '58671272c43aa077c147487ef99ff355eec510fc95fe1abbb4f865f6139fb2ff' ;;
+        00-common.sh) printf '%s' '567b5de328dde9099cd7b549a7f04932fcf472c06ad97c97981b39730222ebe6' ;;
         10-ui.sh) printf '%s' 'fa872528aef5689fb029906aa6c736f77626dd6c58d465f7045bf6ce4d2842d6' ;;
         20-detect.sh) printf '%s' '0085f5abc462ec613c12e590a92a122e6f3690c2dc227f6246858af07ffaab88' ;;
         30-packages.sh) printf '%s' '6053001bab30cebea89784f6bf9c17d263e4802205728ca8553b09b99ad79083' ;;
         40-session.sh) printf '%s' 'b59e33f02aeeff0214a8ff87c41e56466fc5b2821c21fbbcfd673778841324fa' ;;
         50-remote.sh) printf '%s' '1dc5ac0b71cece75e4bcb139d1f65c2eb48dbcd91b0e32dedcad4582a5d7c603' ;;
-        52-cast.sh) printf '%s' '259ff23a97d34603d5ffa625fd21b32f2e6d175df4328e75a547362aa1aade97' ;;
+        52-cast.sh) printf '%s' '3ee6affa7dd03a9700051b1b15dafee28fe49fea7e9b69a83739404e17aec32e' ;;
         60-ssh.sh) printf '%s' '2b145f7d080cbe15d94579f8a5a57e5270c49f4f64285fc9b87dccc585fc86f6' ;;
         70-proot.sh) printf '%s' 'a49b12f524bf458169a788150c3a8d955f824947f0476874105c4617607750bd' ;;
         75-tunnel.sh) printf '%s' '506904a4e720fd0f7aefb8dd6522e934480d09c81f02f305ce973a6a0551c570' ;;

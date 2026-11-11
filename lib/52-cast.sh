@@ -255,6 +255,7 @@ write_remote_page() {
   #preview { position: fixed; right: 8px; top: 36px; width: 168px; height: 95px;
     border: 1px solid #333; border-radius: 8px; overflow: hidden; opacity: 0.85; }
   #pad { position: absolute; left: 0; right: 0; top: 36px; bottom: 132px;
+    touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
     background: radial-gradient(circle at 50% 40%, #1b1e23, #0c0d10); }
   #keys { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px; display: grid;
     grid-template-columns: repeat(6, 1fr); gap: 6px; background: #17191d; }
@@ -269,7 +270,7 @@ write_remote_page() {
 <div id="top"><span class="dot" id="dot"></span><span id="state">conectando</span></div>
 <div id="preview"><div id="screen"></div></div>
 <div id="pad"></div>
-<div id="hint">toque para clicar, dois dedos para rolar, arraste para mover</div>
+<div id="hint">arraste para mover, toque para clicar, segure e arraste para mover janela</div>
 <div id="keys"></div>
 <script type="module">
 import RFB from './core/rfb.js';
@@ -290,8 +291,13 @@ const keysBar = document.getElementById('keys');
 let rfb = null;
 let px = Math.round(fbW / 2);
 let py = Math.round(fbH / 2);
-let dragOrigin = null;
-let pressTimer = null;
+let dragging = false;
+let holdTimer = null;
+let startPt = null;
+let lastPt = null;
+let moved = false;
+let scrollLast = null;
+let lastTouchAt = 0;
 
 const KEYS = {
   Escape: 0xff1b, Tab: 0xff09, Enter: 0xff0d, BackSpace: 0xff08, Delete: 0xffff,
@@ -320,63 +326,117 @@ function codeFor(name) {
 function keyDown(name) { if (rfb) rfb.sendKey(KEYS[name] || keysymFor(name), codeFor(name), true); }
 function keyUp(name) { if (rfb) rfb.sendKey(KEYS[name] || keysymFor(name), codeFor(name), false); }
 
+function screenCanvas() { return screen.querySelector('canvas'); }
+
+// noVNC 1.5 nao expoe sendPointer: o caminho e despachar eventos de mouse no
+// canvas, que o RFB converte em PointerEvent do protocolo VNC
+function canvasClient() {
+  const c = screenCanvas();
+  if (!c) return null;
+  const r = c.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  return {
+    c,
+    x: r.left + (px / fbW) * r.width,
+    y: r.top + (py / fbH) * r.height,
+  };
+}
+
+function emit(type, extra) {
+  const p = canvasClient();
+  if (!p) return;
+  p.c.dispatchEvent(new MouseEvent(type, Object.assign({
+    clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, view: window,
+  }, extra || {})));
+}
+
 function move(dx, dy) {
   px = Math.min(fbW - 1, Math.max(0, px + dx));
   py = Math.min(fbH - 1, Math.max(0, py + dy));
-  if (rfb) rfb.sendPointer(px, py, 0);
+  emit('mousemove', { buttons: dragging ? 1 : 0 });
 }
 
 function click(button) {
-  if (!rfb) return;
-  const mask = button === 'right' ? 4 : 1;
-  rfb.sendPointer(px, py, mask);
-  setTimeout(() => { if (rfb) rfb.sendPointer(px, py, 0); }, 60);
+  const b = button === 'right' ? 2 : 0;
+  emit('mousedown', { button: b, buttons: b === 2 ? 2 : 1 });
+  emit('mouseup', { button: b, buttons: 0 });
 }
 
-let lastTouch = null;
+function wheel(dy) { emit('wheel', { deltaY: dy }); }
+
+function isTouchRecent() { return Date.now() - lastTouchAt < 700; }
+
 pad.addEventListener('touchstart', (ev) => {
+  lastTouchAt = Date.now();
   if (ev.touches.length === 2) {
-    dragOrigin = { y: ev.touches[0].clientY };
+    scrollLast = ev.touches[0].clientY;
+    lastPt = null;
     return;
   }
   const t = ev.touches[0];
-  lastTouch = { x: t.clientX, y: t.clientY };
-  pressTimer = setTimeout(() => { dragOrigin = { hold: true }; click('left'); pressTimer = null; }, 450);
+  startPt = { x: t.clientX, y: t.clientY };
+  lastPt = { x: t.clientX, y: t.clientY };
+  moved = false;
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => {
+    dragging = true;
+    emit('mousedown', { button: 0, buttons: 1 });
+  }, 450);
 }, { passive: true });
 
 pad.addEventListener('touchmove', (ev) => {
   ev.preventDefault();
-  if (ev.touches.length === 2 && dragOrigin) {
-    const dy = ev.touches[0].clientY - dragOrigin.y;
-    dragOrigin.y = ev.touches[0].clientY;
-    if (rfb) {
-      rfb.sendPointer(px, py, dy > 0 ? 16 : 8);
-      setTimeout(() => { if (rfb) rfb.sendPointer(px, py, 0); }, 40);
-    }
+  lastTouchAt = Date.now();
+  if (ev.touches.length === 2) {
+    const y = ev.touches[0].clientY;
+    if (scrollLast !== null) wheel((scrollLast - y) * 8);
+    scrollLast = y;
     return;
   }
   const t = ev.touches[0];
-  const dx = (t.clientX - lastTouch.x) * (fbW / pad.clientWidth);
-  const dy = (t.clientY - lastTouch.y) * (fbH / pad.clientHeight);
-  lastTouch = { x: t.clientX, y: t.clientY };
-  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+  if (!lastPt) lastPt = { x: t.clientX, y: t.clientY };
+  if (startPt && Math.hypot(t.clientX - startPt.x, t.clientY - startPt.y) > 8) {
+    moved = true;
+    if (!dragging) { clearTimeout(holdTimer); holdTimer = null; }
+  }
+  const dx = (t.clientX - lastPt.x) * (fbW / Math.max(1, pad.clientWidth));
+  const dy = (t.clientY - lastPt.y) * (fbH / Math.max(1, pad.clientHeight));
+  lastPt = { x: t.clientX, y: t.clientY };
   move(dx, dy);
 }, { passive: false });
 
-pad.addEventListener('touchend', () => {
-  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; click('left'); }
-  dragOrigin = null;
+pad.addEventListener('touchend', (ev) => {
+  lastTouchAt = Date.now();
+  clearTimeout(holdTimer);
+  holdTimer = null;
+  if (ev.touches.length > 0) return;
+  if (dragging) { emit('mouseup', { button: 0, buttons: 0 }); dragging = false; }
+  else if (!moved) click('left');
+  startPt = null;
+  lastPt = null;
+  scrollLast = null;
 }, { passive: true });
 
 pad.addEventListener('mousemove', (ev) => {
-  if (!(document.pointerLockElement === pad) && ev.movementX === 0 && ev.movementY === 0) return;
-  move(ev.movementX || 0, ev.movementY || 0);
+  if (isTouchRecent()) return;
+  const r = pad.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  px = Math.min(fbW - 1, Math.max(0, ((ev.clientX - r.left) / r.width) * fbW));
+  py = Math.min(fbH - 1, Math.max(0, ((ev.clientY - r.top) / r.height) * fbH));
+  emit('mousemove', { buttons: ev.buttons });
 });
-pad.addEventListener('click', () => {
-  if (document.pointerLockElement !== pad && pad.requestPointerLock) pad.requestPointerLock();
-  else click('left');
+
+pad.addEventListener('mousedown', (ev) => {
+  if (isTouchRecent()) return;
+  emit('mousedown', { button: ev.button, buttons: ev.buttons });
 });
-pad.addEventListener('contextmenu', (ev) => { ev.preventDefault(); click('right'); });
+
+pad.addEventListener('mouseup', (ev) => {
+  if (isTouchRecent()) return;
+  emit('mouseup', { button: ev.button, buttons: 0 });
+});
+
+pad.addEventListener('contextmenu', (ev) => { ev.preventDefault(); });
 
 window.addEventListener('keydown', (ev) => {
   if (ev.key === 'Shift') return keyDown('ShiftLeft');
@@ -414,6 +474,13 @@ for (const [label, name] of combos) {
   btn.addEventListener('touchend', (ev) => { ev.preventDefault(); btn.classList.remove('active'); keyUp(name); }, { passive: false });
   btn.addEventListener('mousedown', () => { btn.classList.add('active'); keyDown(name); });
   btn.addEventListener('mouseup', () => { btn.classList.remove('active'); keyUp(name); });
+  keysBar.appendChild(btn);
+}
+
+for (const [label, side] of [['Clique', 'left'], ['Dir', 'right']]) {
+  const btn = document.createElement('button');
+  btn.textContent = label;
+  btn.addEventListener('click', () => click(side));
   keysBar.appendChild(btn);
 }
 
