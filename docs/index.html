@@ -96,6 +96,7 @@
     <div class="brand"><span class="dot"></span> dextermux</div>
     <nav>
       <a href="#instalacao">Instalacao</a>
+      <a href="#comandos">Comandos</a>
       <a href="#acesso">Acesso</a>
       <a href="https://github.com/integrefacil/dextermux">GitHub</a>
       <a href="https://github.com/integrefacil/dextermux/tree/main/specs">Specs</a>
@@ -104,91 +105,82 @@
 
   <main>
     <section class="hero">
-      <div class="tag">Termux + XFCE4 + VNC + HTTPS</div>
+      <div class="tag">Termux + Cinnamon/XFCE + VNC + HTTPS</div>
       <h1>Seu <span>desktop Linux</span> no celular, acessivel de qualquer lugar.</h1>
       <p class="sub">
-        Instala XFCE4 minimo, VNC, noVNC com HTTPS na LAN, sshd e tunel opcional.
-        Sem menus, sem root e sem proot.
+        Instalador modular e interativo: escolha Cinnamon ou XFCE, ligue o tunel se quiser,
+        defina a senha e receba o bloco de acesso pronto. Proot opcional para apps glibc.
       </p>
       <div class="install">
         <span class="prompt">$</span>
-        <code id="cmd">curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | bash</code>
+        <code id="cmd">curl -fsSL https://integrefacil.github.io/dextermux/setup.sh -o setup.sh && bash setup.sh</code>
         <button class="copy" id="copy">Copiar</button>
       </div>
       <div class="grid">
-        <div class="card"><div class="icon">&#128202;</div><h3>Diagnostico antes</h3><p>Modelo, Android, nucleos, memoria, disco, rede e processos antes de baixar qualquer pacote.</p></div>
-        <div class="card"><div class="icon">&#127912;</div><h3>XFCE4 minimo</h3><p>So o essencial: xfwm4, painel, sessao, xfdesktop, Thunar e terminal. Sem daemons extras.</p></div>
-        <div class="card"><div class="icon">&#128421;</div><h3>Poucos processos</h3><p>~11 processos ocioso, com medidor contra o limite de 32 do Android.</p></div>
-        <div class="card"><div class="icon">&#127760;</div><h3>HTTPS na LAN</h3><p>noVNC na 6080 com certificado autoassinado e tunel HTTPS publico do Cloudflare.</p></div>
-        <div class="card"><div class="icon">&#9881;</div><h3>Zero memoria</h3><p>Banner com as URLs ao abrir o Termux. Comandos <code class="inline">desktop</code>, <code class="inline">url</code> e <code class="inline">dextermux-status</code>.</p></div>
+        <div class="card"><div class="icon">&#128202;</div><h3>Diagnostico antes</h3><p>Modelo, Android, memoria, disco, rede e processos antes de baixar qualquer pacote.</p></div>
+        <div class="card"><div class="icon">&#127912;</div><h3>Cinnamon ou XFCE</h3><p>Cinnamon como padrao e XFCE leve como opcao; troca com <code class="inline">session</code> sem apagar nada.</p></div>
+        <div class="card"><div class="icon">&#128274;</div><h3>HTTPS na LAN</h3><p>noVNC com certificado autoassinado, SANs do IP atual e comando <code class="inline">tls</code>.</p></div>
+        <div class="card"><div class="icon">&#9729;</div><h3>Tunel sob demanda</h3><p>Cloudflare desligado por padrao; <code class="inline">tunnel on</code> quando precisar.</p></div>
+        <div class="card"><div class="icon">&#128736;</div><h3>Proot opcional</h3><p>Ubuntu base para apps glibc, com <code class="inline">ubuntu</code> e <code class="inline">gui</code>. Sem ferramentas de dev.</p></div>
+        <div class="card"><div class="icon">&#9881;</div><h3>Bloco de acesso</h3><p>SSH, VNC, noVNC, tunel e senha impressos no fim e em <code class="inline">url</code>.</p></div>
       </div>
     </section>
 
     <section id="instalacao">
       <h2>Como instalar</h2>
       <div class="steps">
-        <div class="step"><b>1. Termux atualizado</b><span>Instale o Termux pela F-Droid ou GitHub e rode o comando da pagina.</span></div>
-        <div class="step"><b>2. Escolha no menu</b><span>Veja os recursos do aparelho, escolha a interface e as ferramentas, confirme o custo em disco.</span></div>
-        <div class="step"><b>3. Termux:Boot</b><span>Instale o app Termux:Boot e abra uma vez para o autostart funcionar.</span></div>
-        <div class="step"><b>4. Bateria</b><span>No Samsung, marque o Termux como "Sem restricoes" e em "Apps que nunca dormem".</span></div>
+        <div class="step"><b>1. Termux atualizado</b><span>Instale pela F-Droid ou GitHub e rode o comando.</span></div>
+        <div class="step"><b>2. Responda o menu</b><span>Ambiente, proot, tunel e senha; revise o resumo.</span></div>
+        <div class="step"><b>3. Termux:Boot</b><span>Instale o app e abra uma vez para o autostart.</span></div>
+        <div class="step"><b>4. Bateria</b><span>Samsung: Termux sem restricoes e em apps que nunca dormem.</span></div>
       </div>
-      <p class="sub" style="margin-top:22px">Automatico, sem menus:</p>
+      <p class="sub" style="margin-top:22px">Automatico:</p>
       <div class="install">
         <span class="prompt">$</span>
-        <code>curl -fsSL https://integrefacil.github.io/dextermux/setup.sh | VNC_PASS=MinhaSen bash</code>
+        <code>bash setup.sh --yes --desktop=cinnamon --no-proot --no-tunnel</code>
       </div>
-      <p class="sub" style="margin-top:22px">Conferir o plano sem instalar:</p>
+      <p class="sub" style="margin-top:22px">Conferir o plano:</p>
       <div class="install">
         <span class="prompt">$</span>
-        <code>bash setup.sh --dry-run</code>
+        <code>bash setup.sh --dry-run --desktop=xfce --proot</code>
       </div>
+    </section>
+
+    <section id="comandos">
+      <h2>Comandos</h2>
+      <table>
+        <tr><th>Comando</th><th>Efeito</th></tr>
+        <tr><td><code class="inline">desktop</code></td><td>Sobe/religa os servicos.</td></tr>
+        <tr><td><code class="inline">url</code></td><td>Imprime o bloco de acesso.</td></tr>
+        <tr><td><code class="inline">status</code></td><td>Processos, TLS, tunel e desktop.</td></tr>
+        <tr><td><code class="inline">session xfce</code></td><td>Troca o ambiente sem apagar.</td></tr>
+        <tr><td><code class="inline">tunnel on</code></td><td>Liga o Cloudflare e mostra a URL.</td></tr>
+        <tr><td><code class="inline">password</code></td><td>Troca a senha de VNC/noVNC/SSH.</td></tr>
+        <tr><td><code class="inline">tls renew</code></td><td>Regenera o certificado da LAN.</td></tr>
+        <tr><td><code class="inline">gui APP</code></td><td>App do Ubuntu no desktop (proot).</td></tr>
+      </table>
     </section>
 
     <section id="acesso">
       <h2>Acesso</h2>
       <table>
         <tr><th>Onde</th><th>Endereco</th><th>Senha</th></tr>
-        <tr><td>VNC (LAN)</td><td><code class="inline">vnc://&lt;ip&gt;:5901</code></td><td>a definida no setup</td></tr>
-        <tr><td>Navegador (LAN)</td><td><code class="inline">https://&lt;ip&gt;:6080/vnc.html</code></td><td>a definida no setup</td></tr>
-        <tr><td>Navegador (externo)</td><td><code class="inline">&lt;url-do-tunel&gt;/vnc.html</code></td><td>a definida no setup</td></tr>
-        <tr><td>SSH</td><td><code class="inline">ssh -p 8022 &lt;usuario&gt;@&lt;ip&gt;</code></td><td>chave publica</td></tr>
+        <tr><td>VNC (LAN)</td><td><code class="inline">vnc://&lt;ip&gt;:5901</code></td><td>compartilhada</td></tr>
+        <tr><td>Navegador (LAN)</td><td><code class="inline">https://&lt;ip&gt;:6080/vnc.html</code></td><td>compartilhada</td></tr>
+        <tr><td>Navegador (externo)</td><td><code class="inline">&lt;url-do-tunel&gt;/vnc.html</code></td><td>compartilhada</td></tr>
+        <tr><td>SSH</td><td><code class="inline">ssh -p 8022 &lt;usuario&gt;@&lt;ip&gt;</code></td><td>compartilhada ou chave</td></tr>
       </table>
       <div class="note" style="margin-top:16px">
-        <b>HTTPS autoassinado na LAN.</b> A porta 6080 usa certificado gerado no proprio aparelho.
-        Aceite o aviso no primeiro acesso; depois o noVNC conecta por <code class="inline">wss</code>.
-        O IP da LAN entra nas SANs e o certificado e renovado quando ele muda. Use
-        <code class="inline">dextermux-tls show</code> para inspecionar e
-        <code class="inline">dextermux-tls disable</code> para voltar ao HTTP.
-      </div>
-    </section>
-
-    <section>
-      <h2>Comandos do dia a dia</h2>
-      <table>
-        <tr><th>Comando</th><th>Efeito</th></tr>
-        <tr><td><code class="inline">desktop</code></td><td>Sobe sshd, Xvnc, websockify e cloudflared.</td></tr>
-        <tr><td><code class="inline">url</code></td><td>Imprime as URLs, a sessao e o estado dos servicos.</td></tr>
-        <tr><td><code class="inline">dextermux-status</code></td><td>Processos, top 5, TLS e tunel.</td></tr>
-        <tr><td><code class="inline">dextermux-tls show</code></td><td>Mostra certificado, SANs e validade.</td></tr>
-        <tr><td><code class="inline">dextermux-tls renew</code></td><td>Regenera o certificado da LAN.</td></tr>
-        <tr><td><code class="inline">tail -f $TMPDIR/cf.log</code></td><td>Acompanha o tunel do Cloudflare.</td></tr>
-      </table>
-    </section>
-
-    <section>
-      <div class="note">
-        <b>Limite de 32 processos.</b> O Android 12+ mata o app acima de 32 processos criados por ele.
-        Use <code class="inline">dextermux-status</code> para medir e feche abas/apps pesados quando subir.
+        <b>Uma senha para tudo.</b> VNC, noVNC e SSH usam a mesma senha, limitada a 8 caracteres pelo
+        VncAuth. Troque com <code class="inline">password</code>.
       </div>
       <div class="note" style="margin-top:16px">
-        <b>Ferramentas glibc.</b> O instalador cria um Ubuntu via <code class="inline">proot-distro</code>
-        com <code class="inline">dextermux-dev</code> (opencode ou shell), <code class="inline">dextermux-ubuntu</code>
-        e <code class="inline">dextermux-gui</code> para abrir apps do Ubuntu no XFCE nativo.
+        <b>Reinstalar do zero.</b> <code class="inline">--reset=artifacts</code> mantem projetos e chaves;
+        <code class="inline">--reset=home</code> apaga todo o HOME e exige duas confirmacoes.
       </div>
       <div class="note" style="margin-top:16px">
-        <b>Nao usa xrdp.</b> O pacote <code class="inline">xrdp 0.10.6.1</code> do Termux tem bug de autenticacao
-        (<code class="inline">Bugcheck; inconsistent auth result</code>). O caminho suportado e VNC + noVNC.
-        Detalhes em <a href="https://github.com/integrefacil/dextermux/blob/main/specs/001-remote-desktop/research.md">research.md</a>.
+        <b>Limite de 32 processos.</b> O Android mata o app acima disso. Use
+        <code class="inline">status</code> para medir; navegador consome 10-15.
       </div>
     </section>
   </main>

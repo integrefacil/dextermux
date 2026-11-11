@@ -1,142 +1,149 @@
-# Feature Specification: Ambiente remoto no Termux (XFCE4 + VNC + SSH)
+# Feature Specification: dextermux v6 (desktop remoto modular)
 
 **Feature Branch**: `001-remote-desktop`
 **Created**: 2026-11-09
-**Status**: Implemented (instalador v3.0.0)
-**Input**: Usuario quer um ambiente remoto leve e previsivel no Termux, focado em SSH, XFCE4, acesso remoto e TLS, sem menus interativos e com teto de processos.
+**Status**: Implemented (v6.0.0)
+**Input**: Usuario quer um instalador modular e interativo, com desktop remoto nativo (Cinnamon padrao ou XFCE), proot opcional para apps glibc, reinstalacao do zero em dois escopos e dados de acesso sempre visiveis.
 
 ## User Scenarios & Testing
 
-### User Story 1 - Instalar com um comando, sem perguntas (Priority: P1)
+### User Story 1 - Instalar com perguntas objetivas (Priority: P1)
 
-O usuario troca de celular, reseta o Termux ou reinstala o app e precisa recuperar o ambiente sem repetir passos manuais e sem responder menus.
+O usuario roda o instalador, responde cinco perguntas e recebe o ambiente pronto.
 
-**Why this priority**: e o motivo do projeto existir.
+**Why this priority**: e o fluxo principal; sem isso nada existe.
 
-**Independent Test**: em um Termux limpo, rodar `curl -fsSL <url> | bash` e obter os servicos ativos e o resumo impresso.
-
-**Acceptance Scenarios**:
-
-1. **Given** um Termux sem XFCE/VNC instalado, **When** o usuario executa o instalador de uma linha, **Then** XFCE4 minimo, TigerVNC, noVNC, sshd e TLS ficam instalados e configurados.
-2. **Given** o instalador executado duas vezes seguidas, **When** a segunda execucao termina, **Then** nao ha duplicacao de linhas, a senha existente e preservada e os servicos continuam funcionando.
-3. **Given** a instalacao concluida, **When** o usuario abre `https://<ip>:6080/vnc.html` e aceita o certificado, **Then** o desktop XFCE aparece e aceita a senha do VNC.
-4. **Given** um terminal sem TTY, **When** o instalador roda, **Then** ele nao bloqueia esperando entrada.
-
-### User Story 2 - Saber as URLs ao abrir o Termux (Priority: P1)
-
-O usuario nao quer memorizar IP, porta ou URL publica.
-
-**Why this priority**: sem o banner o usuario nao consegue acessar apos reinicios ou quedas.
-
-**Independent Test**: abrir uma sessao nova no Termux e ver o bloco "Acesso remoto" com VNC, noVNC e estado do tunel.
+**Independent Test**: em um Termux limpo, rodar `bash setup.sh`, escolher Cinnamon, nao proot, nao tunel, definir senha e obter os servicos ativos.
 
 **Acceptance Scenarios**:
 
-1. **Given** os servicos ativos, **When** o usuario abre o Termux, **Then** o banner mostra IP real, 5901, 6080 com o esquema correto e o estado do tunel.
-2. **Given** os servicos parados, **When** o usuario abre o Termux, **Then** o banner indica `desktop`.
-3. **Given** o usuario digitou `url`, **When** o comando termina, **Then** o mesmo banner e impresso.
+1. **Given** um Termux sem instalacao, **When** o usuario executa o instalador, **Then** ele pergunta ambiente, proot, tunel e senha, mostra um resumo e instala.
+2. **Given** a instalacao concluida, **When** o usuario abre o navegador na URL HTTPS e aceita o certificado, **Then** o desktop aparece e aceita a senha.
+3. **Given** o instalador rodando duas vezes, **When** a segunda termina, **Then** senha, chaves e configs existentes sao preservadas.
+4. **Given** execucao sem TTY, **When** o instalador roda, **Then** usa os padroes e nao apaga nada.
 
-### User Story 3 - Acessar de fora da rede local (Priority: P2)
+### User Story 2 - Ver os dados de acesso (Priority: P1)
 
-O usuario quer acessar o desktop pela internet quando ligar o tunel.
+O usuario quer SSH, VNC, noVNC, tunel e senha visiveis sem memorizar nada.
 
-**Why this priority**: valor alto, mas opcional e desligado por padrao.
+**Why this priority**: sem isso o acesso depende de anotacoes.
 
-**Independent Test**: rodar `bash setup.sh --repair --tunnel`, abrir a URL `*.trycloudflare.com/vnc.html` de outra rede e chegar ao login do VNC.
-
-**Acceptance Scenarios**:
-
-1. **Given** o cloudflared ativo, **When** o usuario acessa a URL publica, **Then** a pagina do noVNC carrega sobre HTTPS e conecta no websocket.
-2. **Given** o celular reiniciado, **When** o Termux:Boot sobe os servicos, **Then** um novo tunel e criado e a nova URL aparece no banner.
-
-### User Story 4 - HTTPS na LAN e teto de processos (Priority: P2)
-
-O usuario quer trafego criptografado na rede local e um ambiente que nao seja morto pelo Android.
-
-**Why this priority**: seguranca basica e estabilidade em uso continuo.
-
-**Independent Test**: `curl -k https://<ip>:6080/vnc.html` retorna 200; `dextermux-status` mostra a contagem abaixo de 24.
+**Independent Test**: rodar `url` e conferir o bloco com usuario, SSH, VNC, noVNC, tunel e senha.
 
 **Acceptance Scenarios**:
 
-1. **Given** TLS ligado, **When** o usuario abre a porta 6080, **Then** a resposta e HTTPS e HTTP em texto claro e recusado.
-2. **Given** o IP da LAN mudou, **When** o usuario roda `dextermux-tls renew` e `desktop`, **Then** o novo IP consta nas SANs.
-3. **Given** o ambiente ocioso, **When** o usuario roda `dextermux-status`, **Then** a contagem fica em `ok` e o top 5 e listado.
-4. **Given** a contagem acima de 30, **When** o status roda, **Then** o veredito e `critico` e os comandos ADB sao exibidos.
+1. **Given** os servicos ativos, **When** o usuario abre o Termux, **Then** o banner mostra o resumo.
+2. **Given** o comando `url`, **When** ele termina, **Then** o bloco completo e impresso.
+3. **Given** `session`, `tunnel on/off` ou `password`, **When** terminam, **Then** o bloco e impresso.
+
+### User Story 3 - Trocar o ambiente sem apagar (Priority: P2)
+
+O usuario quer alternar Cinnamon e XFCE sem reinstalar.
+
+**Why this priority**: o visual muda de ideia, os dados nao.
+
+**Independent Test**: `session xfce` reinstala apenas o necessario, reinicia o VNC e imprime o bloco.
+
+**Acceptance Scenarios**:
+
+1. **Given** Cinnamon instalado e XFCE ausente, **When** o usuario roda `session xfce`, **Then** o XFCE e instalado e ativado.
+2. **Given** os dois instalados, **When** o usuario alterna, **Then** nada e apagado.
+3. **Given** o instalador reexecutado, **When** escolhe "trocar ambiente", **Then** o fluxo faz o mesmo.
+
+### User Story 4 - Reinstalar do zero em dois escopos (Priority: P2)
+
+O usuario quer limpar sem risco de apagar projetos por engano.
+
+**Why this priority**: reinstalar e comum; apagar `$HOME` nao pode ser acidental.
+
+**Independent Test**: escolher reinstalar, confirmar B1 (`y/N`) e obter o sistema limpo mantendo projetos e chaves.
+
+**Acceptance Scenarios**:
+
+1. **Given** B1, **When** confirmado, **Then** artefatos do dextermux e rootfs do proot sao removidos; `$HOME` permanece.
+2. **Given** B2, **When** as duas confirmacoes sao aceitas, **Then** `$HOME` e rootfs sao removidos e o script se reexecuta de `$TMPDIR`.
+3. **Given** qualquer reset sem TTY, **When** invocado, **Then** nada e apagado.
+
+### User Story 5 - Proot opcional para apps glibc (Priority: P3)
+
+O usuario quer instalar apps do Ubuntu depois, sem dev no instalador.
+
+**Why this priority**: cobre binarios glibc, mas nao e necessario para o desktop.
+
+**Independent Test**: marcar proot na instalacao, rodar `ubuntu` e `gui xterm`.
+
+**Acceptance Scenarios**:
+
+1. **Given** proot instalado, **When** o usuario roda `ubuntu`, **Then** abre um shell no Ubuntu.
+2. **Given** proot instalado, **When** roda `gui xterm`, **Then** a janela abre no desktop nativo.
+3. **Given** proot ausente, **When** o usuario roda `setup.sh --proot`, **Then** apenas o Ubuntu e instalado.
 
 ### Edge Cases
 
-- O Android mata os processos em segundo plano: o banner indica "parado" e `desktop` religa.
-- O Android 12+ mata o app acima de 32 processos (phantom process killer): `dextermux-status` mede e orienta.
-- O IP da Wi-Fi muda apos reboot: o banner recalcula e o certificado e regenerado.
-- O lock `.X1-lock` fica orfao apos queda: o `start-desktop.sh` remove antes de subir.
-- A porta 8022 fica ocupada por sshd zumbi: reiniciar via `desktop`.
-- O quick tunnel cai e a URL muda: o banner sempre le a ultima URL do log.
-- Cliente Remmina recusa os tipos de seguranca: servidor so oferece `VncAuth`.
-- Certificado nao aceito: o navegador nao abre o `wss`; e preciso aceitar a pagina HTTPS antes.
+- Android mata processos: o banner indica "parado" e `desktop` religa.
+- 32 processos: o `status` conta e classifica; navegador consome 10-15.
+- IP muda: o certificado e regenerado com `tls renew`.
+- Sessao escolhida ausente: `session` orienta instalar.
+- Proot nao instalado: `gui`/`ubuntu` orientam `--proot`.
+- `passwd` exige terminal: o instalador orienta, nao forca.
 
 ## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: O instalador DEVE rodar sem prompts, aceitando configuracao apenas por flags e variaveis de ambiente.
-- **FR-002**: O instalador DEVE ser idempotente, preservando senha VNC e chaves SSH existentes.
-- **FR-003**: O sistema DEVE instalar apenas XFCE4 minimo (`xfwm4`, `xfce4-panel`, `xfce4-session`, `xfce4-settings`, `xfconf`, `xfdesktop`, `thunar`, `xfce4-terminal`).
-- **FR-004**: O sistema DEVE subir o Xvnc com `VncAuth` e resolucao inicial configuravel.
+- **FR-001**: O instalador DEVE ser interativo quando houver TTY e nao interativo com `--yes`.
+- **FR-002**: O instalador DEVE ser idempotente, preservando senha, chaves e configs.
+- **FR-003**: O sistema DEVE instalar Cinnamon (padrao) ou XFCE como desktop nativo.
+- **FR-004**: O sistema DEVE subir Xvnc com `VncAuth` e geometria configuravel.
 - **FR-005**: O sistema DEVE servir noVNC + websockify na porta 6080.
-- **FR-006**: O sistema DEVE oferecer um tunel HTTPS publico opcional via Cloudflare, desligado por padrao.
-- **FR-007**: O sistema DEVE iniciar o sshd e permitir chave publica pre-carregada.
-- **FR-008**: O sistema DEVE imprimir as URLs e o estado ao abrir o Termux e via comando `url`.
-- **FR-009**: O sistema DEVE religar tudo com o comando `desktop`.
-- **FR-010**: O sistema DEVE iniciar os servicos no boot via Termux:Boot.
-- **FR-011**: O sistema NAO DEVE depender de root, proot, systemd ou pacotes quebrados.
-- **FR-012**: O sistema DEVE orientar sobre bateria, IP, porta e riscos de exposicao publica.
-- **FR-013**: O instalador DEVE medir recursos (modelo, Android, nucleos, memoria, disco, rede, processos) e imprimir o resultado sem pausar.
-- **FR-014**: O sistema DEVE servir o noVNC por HTTPS autoassinado na LAN, com o IP atual nas SANs e regeneracao quando o IP mudar.
-- **FR-015**: O sistema DEVE permitir ligar, desligar e renovar o HTTPS local sem reinstalar.
-- **FR-016**: O sistema DEVE medir e reportar a contagem de processos, avisando em 23 e marcando critico em 27, sem bloquear.
-- **FR-017**: O sistema DEVE registrar log completo da execucao em `~/dextermux-install.log`.
-- **FR-018**: O `.bashrc` DEVE apenas imprimir o banner, sem iniciar servicos.
-- **FR-019**: O sistema DEVE exibir usuario, IP, porta 8022 e comando SSH no banner e no resumo, e permitir autorizar chaves depois da instalacao via `dextermux-ssh add`.
-- **FR-020**: O instalador DEVE instalar Ubuntu via `proot-distro` por padrao, com `curl`, `git` e `ca-certificates`, e permitir pular com `--no-ubuntu`.
-- **FR-021**: O sistema DEVE expor `dextermux-dev`, `dextermux-ubuntu`, `dextermux-gui` e um wrapper `opencode`, alem de atalhos no menu do XFCE.
-- **FR-022**: Apps graficos do Ubuntu DEVEM renderizar no Xvnc nativo via `--shared-tmp` e cookie X11 copiado, sem segundo desktop.
-- **FR-023**: O instalador DEVE permitir instalar Xubuntu em rootfs dedicado (`--xubuntu`, core por padrao; `--xubuntu=full` para o metapacote) e alternar o desktop com `dextermux-desktop native|xubuntu`.
-- **FR-024**: Resets DEVEM exigir `--confirm=APAGAR`, rodar apenas no Termux e nunca apagar `$HOME` quando invocado por pipe.
+- **FR-006**: O tunel Cloudflare DEVE ser perguntado na instalacao e controlavel por `tunnel`.
+- **FR-007**: O sistema DEVE iniciar sshd e aceitar chave publica.
+- **FR-008**: O sistema DEVE imprimir o bloco de acesso no fim da instalacao e nos comandos relevantes.
+- **FR-009**: O sistema DEVE religar tudo com `desktop`.
+- **FR-010**: O sistema DEVE iniciar no boot via Termux:Boot.
+- **FR-011**: O sistema NAO DEVE depender de root, systemd, xrdp, snap ou Flatpak.
+- **FR-012**: O sistema DEVE orientar sobre bateria, IP e exposicao publica.
+- **FR-013**: O instalador DEVE medir recursos e estado antes de instalar.
+- **FR-014**: O noVNC DEVE usar HTTPS autoassinado com SANs do IP atual.
+- **FR-015**: `tls` DEVE permitir show, renew, enable e disable.
+- **FR-016**: `status` DEVE medir processos, avisar em 23 e marcar critico em 27.
+- **FR-017**: A instalacao DEVE gravar log em `~/dextermux-install.log`, sem senha.
+- **FR-018**: A senha DEVE ser unica para VNC/noVNC/SSH, com ate 8 caracteres, e alteravel por `password`.
+- **FR-019**: `session` DEVE mostrar e trocar o ambiente sem apagar dados.
+- **FR-020**: A reinstalacao DEVE ter B1 (uma confirmacao) e B2 (duas confirmacoes), nunca sem TTY.
+- **FR-021**: O codigo DEVE ser modular em `lib/`, com bootstrap e SHA256 no modo pipe.
+- **FR-022**: O proot DEVE ser opcional, com Ubuntu base e ponte grafica, sem ferramentas de dev.
+- **FR-023**: `tunnel` DEVE permitir on, off, status e url depois da instalacao.
+- **FR-024**: O conjunto CLI padrao DEVE incluir git, curl, tar, python, openssl-tool, net-tools e nano.
 
-### Key Entities
+## Key Entities
 
-- **Servicos remotos**: VNC (5901), noVNC (6080, HTTPS), sshd (8022), tunel publico opcional.
-- **Configuracao persistida**: `~/.vnc/xstartup`, `~/.vnc/passwd`, `~/start-desktop.sh`, `~/show-access.sh`, `~/.dextermux/{tls.sh,status.sh,ssh.sh,dev.sh,ubuntu.sh,gui.sh}`, `~/.dextermux/tunnel`, `~/.dextermux/tls/{server.crt,server.key,mode,sans}`, `~/.termux/boot/start-services.sh`, `~/tunnel-url.txt` e o rootfs em `$PREFIX/var/lib/proot-distro/containers/ubuntu/rootfs`.
-- **Estado de execucao**: processos `Xvnc`, `websockify`, `cloudflared`; logs em `$TMPDIR/ws-6080.log`, `$TMPDIR/cf.log`, `~/.vnc/localhost:1.log` e `~/dextermux-install.log`.
+- **Servicos**: VNC (5901), noVNC (6080, HTTPS), sshd (8022), tunel opcional.
+- **Configuracao**: `~/.dextermux/{desktop,tunnel,password,tls/,*.sh}`, `~/.vnc/{xstartup,passwd}`, `~/start-desktop.sh`, `~/show-access.sh`, `~/.termux/boot/start-services.sh`, `~/tunnel-url.txt`.
+- **Proot**: `$PREFIX/var/lib/proot-distro/containers/ubuntu/rootfs`.
+- **Estado**: processos `Xvnc`, `websockify`, `cloudflared`; logs em `$TMPDIR/{ws-6080,cf}.log`, `~/.vnc/localhost:1.log`.
 
 ## Success Criteria
 
-### Measurable Outcomes
-
-- **SC-001**: Um Termux limpo chega ao desktop funcional em menos de 15 minutos com um unico comando.
-- **SC-002**: Reexecutar o instalador nao altera a senha existente e nao duplica entradas no `.bashrc`.
-- **SC-003**: O banner mostra as URLs corretas em 100% das aberturas com servicos ativos.
-- **SC-004**: A URL publica responde HTTP 200 em `vnc.html` apos o tunel registrar a conexao.
-- **SC-005**: Apos queda total, `desktop` restabelece 5901 e 6080 sem intervencao manual.
-- **SC-006**: `curl -k https://<ip>:6080/vnc.html` responde 200 e a mesma porta recusa HTTP em texto claro.
-- **SC-007**: O ambiente ocioso fica com 12-16 processos, abaixo do teto de 23 usado pelo status.
-- **SC-008**: `dextermux-status` mostra a contagem e o top 5 em menos de 2 segundos.
-- **SC-009**: `dextermux-dev` abre o opencode dentro do Ubuntu; `dextermux-gui xterm` abre uma janela no XFCE nativo.
-- **SC-010**: `--xubuntu` sobe o Xubuntu no `:1`; falha em 20 s volta ao XFCE nativo e registra no log.
+- **SC-001**: XFCE instalado e acessivel em menos de 15 minutos; Cinnamon em menos de 30.
+- **SC-002**: Reexecutar preserva senha e nao duplica o `.bashrc`.
+- **SC-003**: O bloco de acesso mostra as URLs corretas com servicos ativos.
+- **SC-004**: `curl -k https://<ip>:6080/vnc.html` responde 200.
+- **SC-005**: `session` troca o desktop em menos de 30 segundos sem apagar dados.
+- **SC-006**: B1 remove apenas artefatos; B2 remove `$HOME` apos duas confirmacoes.
+- **SC-007**: `gui xterm` abre janela no desktop nativo com proot instalado.
+- **SC-008**: Sem TTY, o instalador nao apaga e usa defaults.
 
 ## Assumptions
 
-- O usuario tem Termux de F-Droid/GitHub e aceita instalar Termux:Boot.
-- O celular tem Android 13+ e acesso a internet para baixar pacotes.
-- O uso do tunel publico e pessoal e a rede de saida nao bloqueia Cloudflare.
-- A senha do VNC Auth tem no maximo 8 caracteres (limitacao do protocolo).
-- O usuario entende que a exposicao publica depende da senha do VNC.
-- O Android 12+ limita processos criados por apps; o projeto mira ~11-17 processos.
-- `gnome-shell`, `mutter` e `nautilus` nao existem no repositorio do Termux; o alvo e XFCE4.
+- Termux de F-Droid/GitHub, Android 13+, internet para pacotes.
+- Senha VNC de ate 8 caracteres.
+- Proot nao roda systemd, snap ou GPU.
+- Navegador consome 10-15 processos.
+- `passwd` pode exigir terminal.
 
-## Checklist de qualidade
+## Checklist
 
-- [x] Nenhum marcador `[NEEDS CLARIFICATION]` restante
-- [x] Requisitos testaveis e sem ambiguidade
-- [x] Criterios de sucesso mensuraveis
+- [x] Sem `[NEEDS CLARIFICATION]`
+- [x] Requisitos testaveis
+- [x] Criterios mensuraveis
