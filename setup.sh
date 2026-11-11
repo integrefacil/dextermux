@@ -11,7 +11,7 @@
 set -eu
 
 DEXTERMUX_VERSION="6.0.0"
-LIBS_COMMIT="__LIBS_COMMIT__"
+LIBS_COMMIT="26deb6e3407441b9d5e25237de4c60c663890572"
 LIBS_ORDER="00-common 10-ui 20-detect 30-packages 40-session 50-remote 60-ssh 70-proot 75-tunnel 80-reset 90-summary"
 
 lib_sha() {
