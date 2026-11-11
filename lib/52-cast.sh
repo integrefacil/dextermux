@@ -268,6 +268,13 @@ write_remote_page() {
   #view { overflow: hidden; background: #000; pointer-events: none; }
   #screen { position: absolute; top: 0; left: 0; transform-origin: 0 0;
     will-change: transform; }
+  #cursor { position: absolute; left: 0; top: 0; width: 20px; height: 20px;
+    margin: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,0.95);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.85), 0 0 10px rgba(0,0,0,0.55);
+    background: rgba(90,170,255,0.22); pointer-events: none; will-change: transform; }
+  #cursor::after { content: ''; position: absolute; left: 50%; top: 50%;
+    width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.85); }
   #pad { background: transparent; touch-action: none;
     -webkit-tap-highlight-color: transparent; }
   #hint { position: fixed; left: 10px; bottom: calc(var(--bar) + 8px); z-index: 6;
@@ -302,7 +309,7 @@ write_remote_page() {
   <button class="t" id="mode" type="button">Abs</button>
   <span id="pos"></span>
 </div>
-<div id="view"><div id="screen"></div></div>
+<div id="view"><div id="screen"></div><div id="cursor"></div></div>
 <div id="pad"></div>
 <div id="hint">arraste para mover o ponteiro, segure para clique direito, dois dedos rolam e pinca amplia</div>
 <textarea id="kbd" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" aria-hidden="true"></textarea>
@@ -326,6 +333,7 @@ const stateEl = document.getElementById('state');
 const dot = document.getElementById('dot');
 const zoomEl = document.getElementById('zoom');
 const posEl = document.getElementById('pos');
+const cursorEl = document.getElementById('cursor');
 const row1 = document.getElementById('row1');
 const row2 = document.getElementById('row2');
 const kbd = document.getElementById('kbd');
@@ -368,6 +376,17 @@ function setState(text, on) {
 
 function showPos() {
   posEl.textContent = Math.round(px) + ',' + Math.round(py);
+  updateCursor();
+}
+
+// cursor proprio: o Cursor do noVNC usa CSS ou canvas preso ao mouse local e
+// nao aparece em toque, entao desenhamos um anel na posicao virtual
+function updateCursor() {
+  if (!cursorEl) return;
+  const x = px * zoom - viewX;
+  const y = py * zoom - viewY;
+  cursorEl.style.transform =
+    'translate(' + (x - 10).toFixed(1) + 'px,' + (y - 10).toFixed(1) + 'px)';
 }
 
 function fitZoom() {
@@ -391,6 +410,7 @@ function applyView() {
   screen.style.transform =
     'translate(' + (-viewX).toFixed(2) + 'px,' + (-viewY).toFixed(2) + 'px) scale(' + zoom.toFixed(4) + ')';
   zoomEl.textContent = Math.round(zoom * 100) + '%';
+  updateCursor();
 }
 
 function layout() {
