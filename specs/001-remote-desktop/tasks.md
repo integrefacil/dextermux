@@ -3,7 +3,9 @@
 **Input**: `specs/001-remote-desktop/` (spec.md, plan.md, research.md)
 **Prerequisites**: plan.md e spec.md
 
-**Status**: implementado e validado no dispositivo em 2026-11-09. Tarefas marcadas `[x]` foram concluidas.
+**Status**: v6.0.0 implementada em 2026-11-11. As fases 1-11 sao **historico**: descrevem versoes
+anteriores (presets, Xubuntu, ferramentas de dev) que foram removidas. O estado atual esta nas
+fases 11-12 e no `spec.md` v6.
 
 ## Phase 1: Setup
 
