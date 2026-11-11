@@ -10,7 +10,7 @@
 
 set -eu
 
-DEXTERMUX_VERSION="6.1.0"
+DEXTERMUX_VERSION="6.1.1"
 LIBS_COMMIT="df84179622fd7897e6c7badf1df3204381676f07"
 LIBS_ORDER="00-common 10-ui 20-detect 30-packages 40-session 50-remote 52-cast 60-ssh 70-proot 75-tunnel 80-reset 90-summary"
 
@@ -34,6 +34,14 @@ lib_sha() {
 
 SELF="${BASH_SOURCE[0]:-}"
 LIBDIR=""
+
+# caminho absoluto do instalador: sobrevive ao wipe do $HOME e ao exec do reset
+if [ -n "$SELF" ] && [ -f "$SELF" ]; then
+    DEXTERMUX_SELF="$(cd "$(dirname "$SELF")" && pwd)/$(basename "$SELF")"
+else
+    DEXTERMUX_SELF=""
+fi
+export DEXTERMUX_SELF
 
 if [ -n "${DEXTERMUX_LIBDIR:-}" ] && [ -d "$DEXTERMUX_LIBDIR" ]; then
     LIBDIR="$DEXTERMUX_LIBDIR"
