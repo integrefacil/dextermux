@@ -240,3 +240,6 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
   segurar e arrastar move janela, dois dedos rolam, dois dedos no fim nao clica.
 - **Decisao**: barra de teclas em duas linhas rolaveis, com botao Fn para F1-F12, Home/End/PgUp/PgDn,
   e botao Colar via `clipboardPasteFrom`.
+
+- **Correcao**: o texto do teclado virtual tambem passa pelos modificadores pegajosos, entao
+  `Ctrl` mais letra digitada no teclado do Android funciona como atalho.
