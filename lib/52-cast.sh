@@ -567,15 +567,22 @@ kbd.addEventListener('beforeinput', (ev) => {
   }
 });
 
+function sendChar(ch) {
+  if (!rfb) return;
+  for (const mod of sticky) rfb.sendKey(KEYS[mod], mod, true);
+  const keysym = keysymFor(ch);
+  rfb.sendKey(keysym, 'Unidentified', true);
+  setTimeout(() => {
+    if (rfb) rfb.sendKey(keysym, 'Unidentified', false);
+    releaseSticky();
+  }, 25);
+}
+
 kbd.addEventListener('input', () => {
   const text = kbd.value;
   kbd.value = '';
   if (!text || !rfb) return;
-  for (const ch of text) {
-    const keysym = keysymFor(ch);
-    rfb.sendKey(keysym, 'Unidentified', true);
-    setTimeout(() => { if (rfb) rfb.sendKey(keysym, 'Unidentified', false); }, 25);
-  }
+  for (const ch of text) sendChar(ch);
 });
 
 kbd.addEventListener('keydown', (ev) => {
