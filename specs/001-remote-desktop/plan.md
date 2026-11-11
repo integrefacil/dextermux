@@ -1,119 +1,107 @@
-# Implementation Plan: Ambiente remoto no Termux (XFCE4)
+# Implementation Plan: dextermux v6
 
-**Branch**: `001-remote-desktop` | **Date**: 2026-11-10 | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-remote-desktop` | **Date**: 2026-11-11 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification de `specs/001-remote-desktop/spec.md`
+**Input**: `specs/001-remote-desktop/spec.md` (v6.0.0)
 
 ## Summary
 
-Um unico `setup.sh`, executavel por `curl -fsSL <url> | bash`, instala e configura um XFCE4 minimo acessivel por VNC local, noVNC com HTTPS autoassinado na LAN e sshd, com tunel Cloudflare opcional, banner de URLs, comandos `desktop`/`url`/`dextermux-tls`/`dextermux-status` e autostart no boot. O instalador nao faz perguntas. O desenho mira 12-16 processos ociosos para conviver com o phantom process killer do Android 12+, que mata o app acima de 32 processos. Um Ubuntu via proot, por padrao, cobre binarios glibc com ponte grafica para o XFCE nativo.
+Instalador modular: `setup.sh` e um bootstrap que carrega `lib/*.sh` (locais no repositorio ou baixadas de um commit fixo com SHA256 no modo pipe). O fluxo e interativo quando ha TTY e automatizado com `--yes`. O padrao e Cinnamon nativo, com XFCE como opcao e troca sem apagar. O acesso remoto combina Xvnc, noVNC com HTTPS autoassinado, sshd e tunel Cloudflare opcional. Proot Ubuntu e opcional, apenas para apps glibc, com ponte grafica para o desktop nativo. O bloco de acesso (SSH, VNC, noVNC, tunel, senha) e impresso no fim e nos comandos relevantes.
 
 ## Technical Context
 
-**Language/Version**: Shell script (bash/sh do Termux), alvo aarch64.
-**Primary Dependencies**: Termux `x11-repo`, `tigervnc` (Xvnc 1.16.2), `openssh`, `openssl-tool`, `python` (3.14), `net-tools`, `cloudflared` (2026.10.7), `curl`, `tar`, `dbus`, `xfwm4`, `xfce4-panel`, `xfce4-session`, `xfce4-settings`, `xfconf`, `xfdesktop`, `thunar`, `xfce4-terminal`, `ttf-dejavu`.
-**Storage**: Arquivos de configuracao no `$HOME` do Termux; sem banco de dados.
-**Testing**: `bash -n`; `shellcheck` no script e nos gerados; `--dry-run`; execucao real idempotente; `curl -k https://<ip>:6080/vnc.html`; `dextermux-status` para contagem de processos.
-**Target Platform**: Termux aarch64, Android 13+ (validado em Samsung Galaxy A15, Android 15).
-**Project Type**: CLI/installer de ambiente.
-**Performance Goals**: desktop utilizavel em 1600x900 via VNC; 11-13 processos ociosos; setup abaixo de 15 minutos.
-**Constraints**: sem root, sem systemd, netlink e `/proc/net/*` bloqueados, processos podem ser mortos pelo Android (phantom process killer, teto 32).
-**Scale/Scope**: um dispositivo por instalacao; um usuario.
+**Language**: Shell (bash/sh do Termux), aarch64.
+**Dependencias**: `x11-repo`, `tigervnc`, `openssh`, `openssl-tool`, `python`, `net-tools`, `cloudflared`, `curl`, `tar`, `dbus`, `git`, `nano`; Cinnamon (`cinnamon`, `gnome-terminal`) ou XFCE minimo; `proot-distro` opcional.
+**Testing**: `bash -n` e `shellcheck` por modulo; harness local que gera todos os scripts e valida; execucao real no aparelho.
+**Target**: Termux aarch64, Android 13+.
+**Performance**: XFCE ~690 MB e 15-20 processos; Cinnamon ~1,7 GB e 20-25; proot so quando usado.
+**Constraints**: sem root, sem systemd, sem xrdp, sem snap/Flatpak, teto de 32 processos.
+**Scale**: um dispositivo, um usuario.
 
 ## Constitution Check
 
-- **Idempotente**: passa. `.bashrc` com marcadores, senha preservada, noVNC baixado so se ausente.
-- **One-command, sem prompts**: passa na versao 2.0.0 da constitution. Sem `read`, sem `/dev/tty`.
-- **Android constraints**: passa. `ifconfig` (sem netlink), `setsid`, Termux:Boot.
-- **Working path only**: passa. xrdp fora do fluxo; VNC + noVNC.
-- **Simplicity**: passa. Um script + quatro helpers gerados, ~870 linhas.
-- **Security explicit**: passa. HTTPS na LAN e aviso de exposicao do tunel.
-- **Observability**: passa. Banner + `url` + `status` + logs.
-- **Diagnose before installing**: passa. Painel de recursos sem pausa.
-- **Process budget**: passa. ~11 ociosos, status avisa em 24 e marca critico em 30.
+- **Idempotente**: passa. Configs determinísticas e senha preservada.
+- **Interativo com TTY**: passa. `--yes` desliga e nunca apaga.
+- **Android constraints**: passa. `ifconfig`, `setsid`, Termux:Boot.
+- **Working path**: passa. Sem xrdp/snap/Flatpak.
+- **Modular verificado**: passa. `lib/` + commit fixo + SHA256.
+- **Security explicit**: passa. TLS, senha de 8 e aviso do tunel.
+- **Observability**: passa. Bloco de acesso + banner + logs.
+- **Diagnose**: passa. Recursos antes de baixar.
+- **Process budget**: passa. Status 23/27; alvo 15-25.
+- **Safe destruction**: passa. B1 (1 confirmacao) e B2 (2), so com TTY.
 
 ## Project Structure
 
-### Source Code (repository root)
-
 ```text
-setup.sh                     # instalador unico (curl | bash)
-docs/index.html              # pagina do projeto (GitHub Pages)
-docs/setup.sh                # copia servida pela pagina (sincronizada por CI)
-.github/workflows/sync-setup.yml
+setup.sh                     # bootstrap (nao editar a mao)
+lib/00-common.sh             # constantes, UI, log, processos
+lib/10-ui.sh                 # TTY, perguntas, menus, flags
+lib/20-detect.sh             # recursos e estado
+lib/30-packages.sh           # pacotes, upgrade, cleanup legado
+lib/40-session.sh            # xstartup, modo, comando session
+lib/50-remote.sh             # Xvnc, noVNC, TLS, banner, boot
+lib/60-ssh.sh                # chave, senha compartilhada, password
+lib/70-proot.sh              # Ubuntu opcional + gui
+lib/75-tunnel.sh             # comando tunnel
+lib/80-reset.sh              # B1/B2
+lib/90-summary.sh            # fluxo, instalacao, reparo, resumo
+docs/index.html              # pagina
+docs/setup.sh                # copia publicada (sincronizada por CI)
+.github/workflows/           # sync da pagina e lint
+specs/                       # constitution, spec, plano, tasks, research, contrato
 ```
 
 Arquivos gerados no dispositivo:
 
 ```text
-~/.vnc/xstartup              # startxfce4 com dbus, NO_AT_BRIDGE=1 e GTK_A11Y=none
-~/.vnc/passwd                # senha VncAuth (8 chars)
-~/start-desktop.sh           # sshd + Xvnc + websockify (TLS) + cloudflared (opcional)
-~/show-access.sh             # banner de URLs e estado
-~/.dextermux/tls.sh          # atalho dextermux-tls
-~/.dextermux/status.sh       # atalho dextermux-status
-~/.dextermux/tunnel          # 1 liga o cloudflared
-~/.dextermux/tls/server.crt  # certificado autoassinado
-~/.dextermux/tls/server.key  # chave privada (600)
-~/.dextermux/tls/mode        # 1 = HTTPS, 0 = HTTP
+~/.vnc/xstartup              # cinnamon-session ou startxfce4
+~/.vnc/passwd                # VncAuth
+~/start-desktop.sh           # sshd + Xvnc + websockify + cloudflared
+~/show-access.sh             # bloco de acesso
+~/.dextermux/desktop         # cinnamon|xfce
+~/.dextermux/password        # senha compartilhada (600)
+~/.dextermux/tunnel          # 0|1
+~/.dextermux/tls/            # cert, key, mode, sans
+~/.dextermux/{session,tunnel,tls,password}.sh
 ~/.termux/boot/start-services.sh
 ~/noVNC/                     # noVNC 1.5.0
-~/tunnel-url.txt             # ultima URL publica
-~/dextermux-install.log      # log da instalacao
-$PREFIX/bin/desktop          # atalho -> start-desktop.sh
-$PREFIX/bin/url              # atalho -> show-access.sh
-$PREFIX/bin/dextermux-tls
-$PREFIX/bin/dextermux-status
+~/tunnel-url.txt
+$PREFIX/bin/{desktop,url,session,tunnel,tls,password,ubuntu,gui}
 ```
 
-**Structure Decision**: projeto single-file (installer). Os helpers sao gerados pelo proprio instalador para manter um unico artefato distribuivel.
-
-## Componentes e responsabilidades
+## Componentes
 
 | Componente | Responsabilidade |
 |------------|------------------|
-| `setup.sh` | diagnosticar, instalar pacotes, gravar configs, criar atalhos, boot, chave SSH, subir servicos |
-| `start-desktop.sh` | `termux-wake-lock`, sshd, limpar locks, Xvnc, websockify (TLS), cloudflared opcional, auto-correcao de modo |
-| `show-access.sh` | IP por `ifconfig`, esquema TLS, estado dos servicos |
-| `dextermux-tls` | gerar, renovar, ligar e desligar o certificado da LAN |
-| `dextermux-status` | contagem de processos, top 5, TLS, tunel e Ubuntu |
-| `dextermux-dev` | opencode no Ubuntu ou shell |
-| `dextermux-ubuntu` | shell no Ubuntu |
-| `dextermux-gui` | app grafico do Ubuntu no XFCE |
-| `~/.vnc/xstartup` | dbus e `startxfce4` com acessibilidade desligada |
-| `~/.bashrc` | apenas o banner (sem autostart) |
-| `~/.termux/boot/start-services.sh` | chamar `start-desktop.sh` no boot |
+| `setup.sh` | resolver libs, verificar SHA256, source e chamar `main` |
+| `90-summary` | fluxo interativo, instalacao, reparo, resumo |
+| `40-session` | xstartup, modo, troca de desktop |
+| `50-remote` | Xvnc, noVNC, TLS, banner e bloco de acesso |
+| `60-ssh` | authorized_keys, senha compartilhada, `password` |
+| `75-tunnel` | `tunnel on/off/status/url` |
+| `70-proot` | Ubuntu base e ponte `gui` |
 
 ## Decisoes tecnicas
 
-1. **VNC em vez de RDP**: `xrdp 0.10.6.1` do Termux tem patch de autenticacao incompativel (`Bugcheck; inconsistent auth result`).
-2. **`VncAuth` explicito**: o TigerVNC 1.16 oferece `VeNCrypt` + `VncAuth`; o Remmina recusa o conjunto. Forcar `-SecurityTypes VncAuth` resolve.
-3. **`websockify --no-deps`**: instalar com dependencias puxa `numpy`, que compila do zero no celular.
-4. **`setsid`**: garante que os processos sobrevivam ao fim da sessao SSH.
-5. **Limpeza de `.X1-lock`**: evita "A VNC server is already running as :1" apos queda.
-6. **IP via `ifconfig`**: netlink e `/proc/net/dev` sao bloqueados para apps.
-7. **Banner sem autostart**: o Android mata processos; abrir o Termux nao deve criar 11 processos para uma consulta rapida. O desktop sobe por `desktop` ou no boot.
-8. **Cloudflare quick tunnel**: gratuito, URL efemera, desligado por padrao por custo de rede e exposicao.
-9. **XFCE minimo**: instalar componentes em vez do metapacote `xfce4` evita `xfce4-notifyd` e `xfce4-power-manager`, que criam daemons extras.
-10. **`NO_AT_BRIDGE=1` e `GTK_A11Y=none`**: impedem o at-spi (ate 2 processos) de subir.
-11. **dbus mantido**: `xfce4-session` nao declara dependencia, mas o Thunar usa gvfs e notificacoes; o custo e 1 processo.
-12. **HTTPS autoassinado**: `websockify --cert/--key/--ssl-only`, SANs com o IP da `wlan0`, regeneracao quando o IP muda. `VeNCrypt` no VNC foi descartado porque o noVNC nao negocia X509.
-13. **Tunel com origem TLS**: `cloudflared --url https://localhost:6080 --no-tls-verify` para nao quebrar quando o websockify esta em HTTPS.
-14. **Porta 6080**: portas abaixo de 1024 exigem root no Android.
-15. **Tamanhos medidos**: ~684 MB instalados (161 pacotes) para base + XFCE minimo, pela resolucao real de dependencias nos indices `termux-main` e `termux-x11`.
-16. **Phantom process killer**: Android 12+ mata o app acima de 32 processos. O status mede, avisa em 23 e marca critico em 27; navegador e apps pesados tambem contam.
-17. **Ubuntu proot como runtime**: binarios glibc (opencode, SDKs) nao rodam no Termux. O instalador cria o rootfs com `proot-distro` e instala `curl`, `git` e `ca-certificates`; `--no-ubuntu` pula.
-18. **Ponte grafica sem segundo desktop**: `proot-distro --shared-tmp` expoe `$TMPDIR/.X11-unix/X1` em `/tmp`; o cookie `~/.Xauthority` e copiado para `/root/.Xauthority` a cada chamada. Testado com `xterm` no XFCE nativo.
-19. **Wrappers**: `dextermux-dev` detecta o opencode e cai para shell; `opencode` chama o `dextermux-dev`; `dextermux-gui` executa qualquer comando do Ubuntu no display `:1`. Atalhos em `~/.local/share/applications`.
-20. **Xubuntu em rootfs dedicado**: `proot-distro install -n xubuntu ubuntu` e `xubuntu-core` + `xubuntu-default-settings` (visual sem apps extras); `--xubuntu=full` usa o metapacote. O VNC roda dentro do proot no `:1` e o websockify do Termux continua servindo.
-21. **Fallback de desktop**: `~/.dextermux/desktop` guarda `native|xubuntu`; se o Xvnc do proot nao subir em 20 s, o modo volta para `native`.
-22. **Reset com trava**: `--reset-proot`/`--reset-all` exigem `--confirm=APAGAR` e recusam execucao por pipe; `--reset-all` copia o script para `$TMPDIR` antes de apagar o `$HOME`.
-23. **Custo assumido do Xubuntu**: ~3 GB e ~25-30 processos ocioso, acima do alvo; fica experimental e com fallback.
+1. **VNC em vez de RDP**: `xrdp` quebrado no Termux.
+2. **`VncAuth`**: compatibilidade com noVNC e Remmina.
+3. **Cinnamon padrao**: escolha do usuario; XFCE fica como alternativa leve.
+4. **Cinnamon e pesado por dependencia**: `cinnamon` exige nemo/mint-themes/ibus (~1,7 GB); nao ha como enxugar sem quebrar o pacote.
+5. **Modular com SHA256**: A2/C1; o pipe baixa do commit fixo e verifica antes de executar.
+6. **Interativo com TTY**: E1; `--yes` para automacao.
+7. **B1/B2**: um reset para artefatos e outro para `$HOME`, com duas confirmacoes no segundo.
+8. **Senha unica**: 8 caracteres por limitacao do VncAuth; SSH tenta `passwd`, com fallback orientado.
+9. **Proot opcional**: Ubuntu base + `--shared-tmp`/cookie X11; sem dev.
+10. **Tunel sob demanda**: `cloudflared` instalado, desligado por padrao, controlado por `tunnel`.
+11. **Bloco de acesso**: `show-access.sh` unico, chamado pelos comandos.
+12. **Sem dev**: nenhum opencode, perfil ou Xubuntu no instalador.
 
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| Banner sem autostart | Android mata processos e abrir o app nao deve custar 11 processos | Autostart gera desperdicio em uso majoritariamente por SSH |
-| Script unico com ~870 linhas | Preserva `curl \| bash` de um comando | Baixar `lib/*.sh` adiciona pontos de falha de rede |
-| dbus mesmo com custo de 1 processo | Thunar e apps GTK dependem de gvfs/notificacoes | Sem dbus o gerenciador de arquivos perde funcoes |
+| `lib/` com download no pipe | legibilidade sem perder o `curl \| bash` | arquivo unico dificulta manutencao |
+| Cinnamon ~1,7 GB | dependencia dura do pacote | enxugar quebra o apt |
+| Senha de 8 no SSH | mesma senha do VNC | senha separada contraria o pedido |
+| Proot opcional | apps glibc | sem proot, apps glibc nao rodam |

@@ -181,3 +181,12 @@ Perfis: core ~255 MB, web ~270 MB, rust ~1104 MB, go ~725 MB, java ~1365 MB, db 
 | cloudflared | 2026.10.7 |
 | OpenSSH | 10.6 |
 | Termux | aarch64, Android 15 (Samsung A15) |
+
+## 23. v6 modular (2026-11-11)
+
+- **Fato**: `curl | bash` nao consegue sourcear `lib/` sem baixar; a copia publicada baixa do commit fixo e verifica SHA256.
+- **Fato**: rodando do repositorio, `./lib` local permite operar offline.
+- **Fato**: Cinnamon no Termux depende de nemo, mint-themes, ibus e outros; nao ha como enxugar por selecao (~1,7 GB).
+- **Fato**: snap/Flatpak exigem systemd e nao funcionam no proot.
+- **Decisao**: interativo com TTY; `--yes` para automacao; B1/B2 para reset; `session` troca sem apagar; `tunnel` sob demanda; senha unica de 8; bloco de acesso unico.
+- **Decisao**: proot apenas como runtime de apps glibc, sem dev.

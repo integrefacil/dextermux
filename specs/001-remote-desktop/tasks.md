@@ -140,3 +140,16 @@
 - [x] T078 Modo `native|xubuntu` com `dextermux-desktop` e fallback de 20 s
 - [x] T079 `--reset-proot` e `--reset-all` com `--confirm=APAGAR`
 - [ ] T080 Validar Xubuntu no aparelho e medir a contagem de processos
+
+## Phase 12: v6 modular (2026-11-11)
+
+- [x] T081 Reescrever o instalador em `lib/` com `setup.sh` bootstrap
+- [x] T082 Bootstrap com `LIBS_COMMIT` fixo e SHA256 por modulo no modo pipe
+- [x] T083 Fluxo interativo com TTY, `--yes` e resumo antes de executar
+- [x] T084 Cinnamon padrao, XFCE opcional e comando `session` sem apagar
+- [x] T085 Reset B1 (uma confirmacao) e B2 (duas) com reexecucao de `$TMPDIR`
+- [x] T086 Comando `tunnel` (on/off/status/url) e pergunta na instalacao
+- [x] T087 Senha compartilhada (ate 8) e comando `password`
+- [x] T088 Bloco de acesso no fim e em `url`, `session`, `tunnel`, `password`, `desktop`
+- [x] T089 Proot opcional (Ubuntu base + `ubuntu`/`gui`) sem ferramentas de dev
+- [ ] T090 Validar no aparelho: instalar, trocar ambiente, tunel, senha e reset

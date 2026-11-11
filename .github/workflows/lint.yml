@@ -1,0 +1,27 @@
+name: lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sintaxe
+        run: |
+          for f in setup.sh lib/*.sh; do
+            bash -n "$f"
+          done
+
+      - name: ShellCheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          shellcheck -s bash setup.sh
+          shellcheck -s bash -e SC2034,SC1091 lib/*.sh
+
+      - name: Checksums das libs
+        run: bash scripts/verify-libs.sh

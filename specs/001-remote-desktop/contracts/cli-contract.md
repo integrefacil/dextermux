@@ -1,160 +1,103 @@
-# Contrato CLI: setup.sh
+# Contrato CLI: setup.sh (v6)
 
 ## Invocacao
 
 ```bash
-curl -fsSL <url> | bash
-curl -fsSL <url> | VAR=valor bash
-curl -fsSL <url> | bash -s -- --tunnel
-bash setup.sh
+curl -fsSL <url> | bash          # baixa lib/ do commit fixo e verifica SHA256
+bash setup.sh                    # usa ./lib local, sem rede
+bash setup.sh --yes --desktop=xfce --no-proot --no-tunnel
+bash setup.sh --reset=artifacts
+bash setup.sh --reset=home
+bash setup.sh --proot            # instala apenas o Ubuntu
 ```
 
-O instalador nao faz perguntas. Nao usa `/dev/tty`, nao consome stdin alem do proprio script e nao
-depende de terminal.
+Com TTY, o instalador pergunta ambiente, proot, tunel e senha. Sem TTY ou com
+`--yes`, usa os padroes e nunca executa reset.
 
 ## Flags
 
 | Flag | Default | Descricao |
 |------|---------|-----------|
-| `--geometry=WxH` | `1600x900` | resolucao inicial do Xvnc |
-| `--password=PASS` | aleatoria | senha do VncAuth (max. 8 caracteres) |
-| `--ssh-pubkey=KEY` | vazio | chave publica adicionada a `~/.ssh/authorized_keys` |
-| `--tunnel` / `--no-tunnel` | `--no-tunnel` | liga ou desliga o cloudflared |
-| `--tls` / `--no-tls` | `--tls` | HTTPS autoassinado na LAN para o noVNC |
-| `--icons` / `--no-icons` | `--no-icons` | icones na area de trabalho (desligado evita gvfs/tumbler) |
-| `--ubuntu` / `--no-ubuntu` | `--ubuntu` | instala Ubuntu via proot-distro para ferramentas glibc |
-| `--xubuntu[=core\|full]` | desligado | Xubuntu em rootfs dedicado; `core` (padrao) usa `xubuntu-core` + `xubuntu-default-settings` |
-| `--desktop=MODE` | `native` | `native` (XFCE) ou `xubuntu` |
-| `--reset-proot` | desligado | apaga os rootfs do proot; exige `--confirm=APAGAR` |
-| `--reset-all` | desligado | apaga rootfs e `$HOME`; exige `--confirm=APAGAR` e script em arquivo |
-| `--confirm=APAGAR` | vazio | libera os resets |
-| `--repair` | desligado | nao instala pacotes; regrava configs e reinicia |
+| `-y`, `--yes` | desligado | nao pergunta; usa padroes e nao apaga |
+| `--desktop=NAME` | `cinnamon` | `cinnamon` ou `xfce` |
+| `--proot` / `--no-proot` | `--no-proot` | instala Ubuntu base para apps glibc |
+| `--tunnel` / `--no-tunnel` | `--no-tunnel` | liga o Cloudflare |
+| `--tls` / `--no-tls` | `--tls` | HTTPS autoassinado na LAN |
+| `--password=PASS` | aleatoria | senha compartilhada (ate 8, truncada) |
+| `--ssh-pubkey=KEY` | vazio | chave em `authorized_keys` |
+| `--geometry=WxH` | `1600x900` | resolucao do Xvnc |
+| `--reset=artifacts` | desligado | B1: apaga artefatos e proot (1 confirmacao) |
+| `--reset=home` | desligado | B2: apaga artefatos, proot e `$HOME` (2 confirmacoes) |
+| `--repair` | desligado | regrava configs e reinicia, sem instalar |
 | `--dry-run` | desligado | imprime o plano e sai |
+| `--version` | | versao |
 | `-h`, `--help` | | ajuda |
-| `--version` | | versao do instalador |
 
-`-y`/`--yes`, `--desktop=*` e `--dev=*` sao aceitos e ignorados, por compatibilidade com a versao 2.
+## Variaveis
 
-## Variaveis de ambiente
+`VNC_PASS`, `GEOMETRY`, `NOVNC_VER`, `SSH_PUBKEY`, `TUNNEL`, `TLS`, `DESKTOP`, `PROOT`,
+`DEXTERMUX_ASCII=1`, `DEXTERMUX_NO_UPDATE=1`, `DEXTERMUX_NO_UPGRADE=1`.
 
-| Variavel | Default | Descricao |
-|----------|---------|-----------|
-| `VNC_PASS` | aleatoria de 8 chars | senha do VNC Auth; se `~/.vnc/passwd` existe e a variavel nao for informada, a senha e preservada |
-| `GEOMETRY` | `1600x900` | resolucao inicial do Xvnc |
-| `NOVNC_VER` | `1.5.0` | tag do noVNC baixada do GitHub |
-| `SSH_PUBKEY` | vazio | chave publica adicionada a `~/.ssh/authorized_keys` |
-| `TUNNEL` | `0` | `1` sobe o cloudflared; `0` desliga |
-| `TLS` | `1` | `1` liga o HTTPS autoassinado na LAN |
-| `DEXTERMUX_ASCII` | `0` | `1` desenha sem caracteres de caixa |
-| `DEXTERMUX_NO_UPDATE` | `0` | `1` pula `pkg update` |
+## Saida
 
-## Saida (stdout)
-
-- Banner e versao.
-- Painel `Recursos do sistema` (modelo, Android, nucleos, memoria, disco, rede, processos).
-- Progresso por etapas no formato `[NN/12] Titulo`.
-- Linha de servicos: `VNC 5901 | noVNC 6080 | tunel: desligado`.
-- Bloco `Resumo` com usuario, URLs, senha, certificado, processos, log e pendencias manuais.
+- Banner com versao.
+- Painel de recursos (modelo, Android, memoria, disco, rede, processos).
+- Menus numerados quando ha TTY.
+- Progresso `[NN/NN]`.
+- Bloco de acesso: SSH, VNC, noVNC, tunel, senha, chaves.
+- Resumo com processos, log, comandos e pendencias.
 
 ## Codigos de saida
 
 | Codigo | Significado |
 |--------|-------------|
-| 0 | instalacao (ou reparo) concluida e servicos iniciados |
-| 1 | nao esta no Termux, flag invalida ou falha de comando critico |
-| 130 | interrompido pelo usuario (Ctrl+C) |
+| 0 | concluido |
+| 1 | fora do Termux, flag invalida, falha critica, checksum invalido |
+| 130 | interrompido |
 
-## Arquivos criados/atualizados
+## Arquivos gerados
 
 | Caminho | Conteudo |
 |---------|----------|
-| `~/.vnc/xstartup` | `startxfce4` com dbus, `NO_AT_BRIDGE=1` e `GTK_A11Y=none` |
+| `~/.vnc/xstartup` | `cinnamon-session` ou `startxfce4` |
 | `~/.vnc/passwd` | senha VncAuth (600) |
-| `~/start-desktop.sh` | sshd, Xvnc, websockify (TLS opcional) e cloudflared (opcional) |
-| `~/show-access.sh` | banner de URLs e estado |
-| `~/.dextermux/tls.sh` | implementacao de `dextermux-tls` |
-| `~/.dextermux/status.sh` | implementacao de `dextermux-status` |
-| `~/.dextermux/ssh.sh` | implementacao de `dextermux-ssh` |
-| `~/.dextermux/dev.sh` | implementacao de `dextermux-dev` |
-| `~/.dextermux/desktop.sh` | implementacao de `dextermux-desktop` |
-| `~/.dextermux/desktop` | modo atual: `native` ou `xubuntu` |
-| `~/.dextermux/ubuntu.sh` | implementacao de `dextermux-ubuntu` |
-| `~/.dextermux/gui.sh` | ponte grafica para apps do Ubuntu |
-| `~/.dextermux/tunnel` | `1` liga o cloudflared, `0` desliga |
-| `~/.dextermux/tls/server.crt` | certificado autoassinado (SANs: IP da LAN, 127.0.0.1, localhost) |
-| `~/.dextermux/tls/server.key` | chave privada (600) |
-| `~/.dextermux/tls/mode` | `1` = HTTPS, `0` = HTTP |
-| `~/.dextermux/tls/sans` | SANs usadas na ultima geracao |
+| `~/start-desktop.sh` | sshd, Xvnc, websockify, cloudflared |
+| `~/show-access.sh` | bloco de acesso |
+| `~/.dextermux/desktop` | `cinnamon` ou `xfce` |
+| `~/.dextermux/password` | senha compartilhada (600) |
+| `~/.dextermux/tunnel` | `0` ou `1` |
+| `~/.dextermux/tls/{server.crt,server.key,mode,sans}` | certificado e modo |
+| `~/.dextermux/{session,tunnel,tls,password}.sh` | implementacoes dos comandos |
 | `~/.termux/boot/start-services.sh` | boot |
 | `~/noVNC/` | noVNC 1.5.0 |
 | `~/tunnel-url.txt` | ultima URL publica |
-| `~/dextermux-install.log` | log da execucao |
-| `~/.ssh/authorized_keys` | chave, se `SSH_PUBKEY` |
-| `~/.bashrc` | bloco `# dextermux-start` ... `# dextermux-end` com banner (sem autostart) |
-| `$PREFIX/bin/desktop` | symlink para `start-desktop.sh` |
-| `$PREFIX/bin/url` | symlink para `show-access.sh` |
-| `$PREFIX/bin/dextermux-tls` | symlink para `tls.sh` |
-| `$PREFIX/bin/dextermux-status` | symlink para `status.sh` |
-| `$PREFIX/bin/dextermux-ssh` | symlink para `ssh.sh` |
-| `$PREFIX/bin/dextermux-dev` | symlink para `dev.sh` |
-| `$PREFIX/bin/dextermux-desktop` | symlink para `desktop.sh` |
-| `$PREFIX/bin/dextermux-ubuntu` | symlink para `ubuntu.sh` |
-| `$PREFIX/bin/dextermux-gui` | symlink para `gui.sh` |
-| `$PREFIX/bin/opencode` | wrapper que chama `dextermux-dev` |
+| `~/dextermux-install.log` | log sem senha |
+| `~/.bashrc` | bloco `# dextermux-start` com o banner |
+| `$PREFIX/bin/{desktop,url,session,tunnel,tls,password}` | comandos basicos |
+| `$PREFIX/bin/{ubuntu,gui}` | apenas com proot |
 
-## Comandos instalados
+## Comandos
 
 | Comando | Efeito |
 |---------|--------|
-| `desktop` | sobe sshd, Xvnc, websockify e o tunel (se ligado) |
-| `url` | imprime IP, portas, TLS e estado |
-| `dextermux-desktop [native|xubuntu]` | mostra ou alterna o desktop e reinicia |
-| `dextermux-dev` | opencode no Ubuntu, ou shell se ausente |
-| `dextermux-ubuntu` | shell no Ubuntu com `DISPLAY=:1` e XAUTHORITY |
-| `dextermux-gui APP` | executa app grafico do Ubuntu no XFCE nativo |
-| `dextermux-ssh` | usuario, IP, porta, comando e chaves autorizadas |
-| `dextermux-ssh add "<chave>"` | autoriza a chave em `authorized_keys` (700/600) |
-| `dextermux-ssh list` | fingerprints das chaves autorizadas |
-| `dextermux-status` | contagem de processos, top 5, TLS e tunel |
-| `dextermux-tls ensure` | gera o certificado se ausente, IP mudou ou expira em 30 dias |
-| `dextermux-tls renew` | regenera o certificado |
-| `dextermux-tls enable` / `disable` | liga ou desliga o HTTPS e para websockify/cloudflared |
-| `dextermux-tls show` | certificado, SANs e validade |
-| `dextermux-tls mode` | imprime `https` ou `http` |
-
-## Xubuntu proot
-
-- Rootfs: `$PREFIX/var/lib/proot-distro/containers/xubuntu/rootfs`, criado com
-  `proot-distro install -n xubuntu ubuntu`.
-- Pacotes dentro: `xubuntu-core` + `xubuntu-default-settings` (ou `xubuntu-desktop` com `--xubuntu=full`), mais `tigervnc-standalone-server` e `dbus-x11`.
-- Sessao: `Xvnc :1` rodando dentro do proot, com `/root/.vnc/xstartup` executando `startxfce4`.
-- Senha: `~/.vnc/passwd` e copiado para `/root/.vnc/passwd`.
-- Fallback: se o `Xvnc` nao subir em 20 s, o modo volta para `native`.
-
-## Reset
-
-- `--reset-proot`: remove `$PREFIX/var/lib/proot-distro/containers` e para.
-- `--reset-all`: copia o script para `$TMPDIR`, remove containers e todo o conteudo de `$HOME`,
-  e se re-executa para instalar do zero.
-- Ambos exigem `--confirm=APAGAR` e so rodam dentro do Termux.
-
-## Ubuntu proot
-
-- Rootfs: `$PREFIX/var/lib/proot-distro/containers/ubuntu/rootfs`.
-- Pacotes base instalados dentro: `curl`, `git`, `ca-certificates`.
-- Ponte grafica: `--shared-tmp` expoe `$TMPDIR/.X11-unix/X1` como `/tmp/.X11-unix/X1`;
-  `~/.Xauthority` e copiado para `/root/.Xauthority` a cada execucao.
-- O wrapper `opencode` chama `dextermux-dev`, que executa `/root/.opencode/bin/opencode` se existir.
-- `--no-ubuntu` pula a instalacao; `--repair` regenera os wrappers.
+| `desktop` | sobe/religa sshd, Xvnc, websockify e tunel |
+| `url` | imprime o bloco de acesso |
+| `status` | processos, top 5, TLS, tunel e desktop |
+| `session` | mostra o desktop atual e os instalados |
+| `session cinnamon` / `session xfce` | troca e reinicia |
+| `tunnel on` / `off` / `status` / `url` | controla o Cloudflare |
+| `tls show` / `renew` / `enable` / `disable` / `mode` | certificado |
+| `password` | troca a senha de VNC/noVNC/SSH |
+| `ubuntu` | shell no Ubuntu (com proot) |
+| `gui APP` | app do Ubuntu no desktop nativo |
 
 ## Portas
 
-| Porta | Servico | Escopo |
-|-------|---------|--------|
-| 8022 | sshd | LAN |
-| 5901 | Xvnc (VncAuth) | LAN |
-| 6080 | websockify + noVNC (HTTPS autoassinado por padrao) | LAN e tunel |
-| 3389 | xrdp | nao usado (pacote quebrado) |
+| Porta | Servico |
+|-------|---------|
+| 8022 | sshd |
+| 5901 | Xvnc (VncAuth) |
+| 6080 | websockify + noVNC (HTTPS por padrao) |
 
 ## Processos e logs
 
@@ -162,24 +105,23 @@ depende de terminal.
 |----------|-----|
 | `Xvnc :1` | `~/.vnc/localhost:1.log` |
 | `websockify` | `$TMPDIR/ws-6080.log` |
-| `cloudflared` | `$TMPDIR/cf.log` (origem `https://localhost:6080` com `--no-tls-verify` quando TLS esta ligado) |
-| `sshd` | syslog do Termux |
+| `cloudflared` | `$TMPDIR/cf.log` |
 | instalacao | `~/dextermux-install.log` |
 
-Orcamento esperado: ~15 processos ocioso (bash, sshd, Xvnc, websockify, xfce4-session, xfwm4,
-xfce4-panel, xfdesktop, xfsettingsd, xfconfd, dbus-daemon, dbus-launch e gvfsd). Thunar, tumbler e
-os agentes GNOME ficam desligados e nao entram na conta.
-
-Faixas do `dextermux-status`: ate 22 `ok`, 23-26 `atencao`, 27+ `critico`. A contagem ignora
-utilitarios transitorios (`ps`, `head`, `wc`, `tr`, `grep`, `sed`, `awk`, `sort`, `sleep`).
+Orcamento: XFCE 15-20; Cinnamon 20-25; navegador +10-15; teto Android 32.
 
 ## Idempotencia
 
-- `pkg upgrade -y` roda antes da instalacao para alinhar sonames (ex: `libicuuc` exigido pelo `libvte`).
-- `pkg install -y` so recebe pacotes ausentes (`dpkg-query`).
-- `~/.vnc/passwd` nao e sobrescrito sem `VNC_PASS`.
-- `~/noVNC` so e baixado se `vnc.html` estiver ausente.
-- O bloco do `.bashrc` e removido/reinserido entre os marcadores.
-- `~/start-desktop.sh` detecta processos ativos e nao duplica; reinicia websockify e cloudflared
-  apenas quando o modo TLS muda.
-- `pkg clean` roda ao final para liberar o cache de download.
+- `pkg install` so recebe ausentes.
+- Senha preservada se `--password` nao for passado.
+- `~/noVNC` so baixa se ausente.
+- Bloco do `.bashrc` entre marcadores.
+- `start-desktop.sh` nao duplica e corrige o modo TLS.
+- `pkg clean` ao final.
+
+## Reset
+
+- B1: remove `~/.dextermux`, `~/.vnc`, `~/start-desktop.sh`, `~/show-access.sh`, `~/noVNC`,
+  boot, bloco do `.bashrc`, rootfs do proot e symlinks. Mantem `$HOME`, `.ssh` e projetos.
+- B2: remove tudo de `$HOME` e o proot, apos duas confirmacoes; o script se reexecuta de `$TMPDIR`.
+- Sem TTY: nenhum reset executa.
