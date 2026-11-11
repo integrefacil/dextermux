@@ -88,6 +88,14 @@ Teclado e mouse Bluetooth são pareados no Android, nunca dentro do Linux: o Ter
 adaptador e o proot não recebe o barramento. Pareie no celular se for controlar pelo `remote.html`,
 ou na TV se o navegador dela for o cliente. Depois aplique o layout com `keyboard abnt2`.
 
+Sem teclado externo, use o botão `Teclado` do `remote.html`: ele abre o teclado do Android e cada
+caractere confirmado vira keysym no X. Os modificadores `Ctrl`, `Alt`, `Shift` e `Super` são
+pegajosos e valem para a próxima tecla; `Fn` abre `F1` a `F12` e `Home`/`End`/`PgUp`/`PgDn`; `Colar`
+envia a área de transferência do celular para o X.
+
+Gestos do trackpad: toque curto clica, segurar 500 ms sem mover faz clique direito, segurar e
+arrastar move a janela, dois dedos rolam.
+
 Chromecast dongle não abre URL arbitrária; nesse caso use o espelhamento de tela do Android com um
 app VNC em primeiro plano.
 

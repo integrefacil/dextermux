@@ -243,36 +243,56 @@ write_remote_page() {
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>dextermux controle</title>
 <style>
   :root { color-scheme: dark; }
-  html, body { margin: 0; background: #101114; color: #e6e6e6; height: 100%;
-    font-family: system-ui, sans-serif; overflow: hidden; touch-action: none; }
-  #top { display: flex; gap: 8px; padding: 8px; font-size: 13px; color: #9aa0a6; }
-  #top .dot { width: 10px; height: 10px; border-radius: 50%; background: #b3261e; margin-top: 4px; }
+  html, body { margin: 0; height: 100%; background: #0f1114; color: #e8e8e8;
+    font-family: system-ui, sans-serif; overflow: hidden; touch-action: none;
+    -webkit-user-select: none; user-select: none; }
+  #top { position: fixed; top: 0; left: 0; right: 0; height: 32px; z-index: 6;
+    display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    font-size: 12px; color: #9aa0a6; background: #121417; }
+  #top .dot { width: 9px; height: 9px; border-radius: 50%; background: #b3261e; }
   #top .dot.on { background: #34a853; }
-  #preview { position: fixed; right: 8px; top: 36px; width: 168px; height: 95px;
-    border: 1px solid #333; border-radius: 8px; overflow: hidden; opacity: 0.85; }
+  #pos { margin-left: auto; font-variant-numeric: tabular-nums; color: #6b7280; }
+  #preview { position: fixed; right: 8px; top: 40px; width: 168px; height: 95px;
+    border: 1px solid #2c3036; border-radius: 8px; overflow: hidden; z-index: 5; }
   #preview #screen { width: 100%; height: 100%; }
-  #pad { position: absolute; left: 0; right: 0; top: 36px; bottom: 132px;
-    touch-action: none; user-select: none; -webkit-tap-highlight-color: transparent;
-    background: radial-gradient(circle at 50% 40%, #1b1e23, #0c0d10); }
-  #keys { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px; display: grid;
-    grid-template-columns: repeat(6, 1fr); gap: 6px; background: #17191d; }
-  #keys button { min-height: 38px; font-size: 14px; border-radius: 8px;
-    border: 1px solid #333; background: #202329; color: #e8e8e8; }
-  #keys button.active { background: #2d5c8a; }
-  #keys .on { background: #23405e; }
-  #hint { position: absolute; left: 12px; bottom: 150px; font-size: 12px; color: #6b7280; }
+  #pad { position: fixed; left: 0; right: 0; top: 32px; bottom: 68px;
+    touch-action: none; -webkit-tap-highlight-color: transparent;
+    background: radial-gradient(circle at 50% 40%, #1b1e23, #0b0c0f); }
+  body.fn #pad { bottom: 122px; }
+  #hint { position: fixed; left: 10px; bottom: 76px; font-size: 11px; color: #5f666f; z-index: 5; }
+  body.fn #hint { display: none; }
+  #keys { position: fixed; left: 0; right: 0; bottom: 0; z-index: 7;
+    background: #15181c; border-top: 1px solid #23272d;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
+  .row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
+    touch-action: pan-x; scrollbar-width: none; }
+  .row::-webkit-scrollbar { display: none; }
+  #row2 { display: none; }
+  body.fn #row2 { display: flex; }
+  button.k { flex: 0 0 auto; min-width: 46px; height: 44px; padding: 0 12px;
+    border-radius: 10px; border: 1px solid #2b3037; background: #1d2126;
+    color: #e6e6e6; font-size: 14px; font-family: inherit; }
+  button.k:active { background: #2d5c8a; }
+  button.k.on { background: #26405c; border-color: #3f6f9e; color: #cfe4ff; }
+  button.k.wide { min-width: 76px; }
+  #kbd { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px;
+    opacity: 0.01; border: 0; padding: 0; resize: none; z-index: 1; }
 </style>
 </head>
 <body>
 <div id="top"><span class="dot" id="dot"></span><span id="state">conectando</span><span id="pos"></span></div>
 <div id="preview"><div id="screen"></div></div>
 <div id="pad"></div>
-<div id="hint">arraste para mover, toque para clicar, segure e arraste para mover janela</div>
-<div id="keys"></div>
+<div id="hint">arraste para mover, toque para clicar, segure para clique direito, segure e arraste para mover janela</div>
+<textarea id="kbd" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" aria-hidden="true"></textarea>
+<div id="keys">
+  <div class="row" id="row1"></div>
+  <div class="row" id="row2"></div>
+</div>
 <script type="module">
 import RFB from './core/rfb.js';
 
@@ -287,17 +307,21 @@ const screen = document.getElementById('screen');
 const pad = document.getElementById('pad');
 const state = document.getElementById('state');
 const dot = document.getElementById('dot');
-const keysBar = document.getElementById('keys');
+const row1 = document.getElementById('row1');
+const row2 = document.getElementById('row2');
+const kbd = document.getElementById('kbd');
 
 let rfb = null;
 let px = Math.round(fbW / 2);
 let py = Math.round(fbH / 2);
 let dragging = false;
+let holdReady = false;
 let holdTimer = null;
 let startPt = null;
 let lastPt = null;
 let moved = false;
 let scrollLast = null;
+let scrollActive = false;
 let lastTouchAt = 0;
 
 const KEYS = {
@@ -308,14 +332,16 @@ const KEYS = {
 };
 for (let i = 1; i <= 12; i++) KEYS['F' + i] = 0xffbe + (i - 1);
 
+const sticky = new Set();
+const stickyButtons = new Map();
+
 function setState(text, on) {
   state.textContent = text;
   dot.classList.toggle('on', !!on);
 }
 
-function keysymFor(ch) {
-  const c = ch.codePointAt(0);
-  return c < 0x100 ? c : 0x01000000 | c;
+function showPos() {
+  document.getElementById('pos').textContent = Math.round(px) + ',' + Math.round(py);
 }
 
 function codeFor(name) {
@@ -324,15 +350,54 @@ function codeFor(name) {
   return name;
 }
 
-function keyDown(name) { if (rfb) rfb.sendKey(KEYS[name] || keysymFor(name), codeFor(name), true); }
-function keyUp(name) { if (rfb) rfb.sendKey(KEYS[name] || keysymFor(name), codeFor(name), false); }
+function keysymFor(ch) {
+  const c = ch.codePointAt(0);
+  return c < 0x100 ? c : 0x01000000 | c;
+}
+
+function keyDown(name) {
+  if (!rfb) return;
+  rfb.sendKey(KEYS[name] || keysymFor(name), codeFor(name), true);
+}
+
+function keyUp(name) {
+  if (!rfb) return;
+  rfb.sendKey(KEYS[name] || keysymFor(name), codeFor(name), false);
+}
+
+// modificador pegajoso: vale para a proxima tecla e volta ao estado neutro
+function releaseSticky() {
+  for (const name of sticky) {
+    if (rfb) rfb.sendKey(KEYS[name], name, false);
+    const btn = stickyButtons.get(name);
+    if (btn) btn.classList.remove('on');
+  }
+  sticky.clear();
+}
+
+function keyTap(name) {
+  if (!rfb) return;
+  for (const mod of sticky) rfb.sendKey(KEYS[mod], mod, true);
+  keyDown(name);
+  setTimeout(() => {
+    keyUp(name);
+    releaseSticky();
+  }, 45);
+}
+
+function toggleSticky(name) {
+  const btn = stickyButtons.get(name);
+  if (sticky.has(name)) {
+    sticky.delete(name);
+    if (btn) btn.classList.remove('on');
+  } else {
+    sticky.add(name);
+    if (btn) btn.classList.add('on');
+  }
+  if (navigator.vibrate) navigator.vibrate(12);
+}
 
 function screenCanvas() { return screen.querySelector('canvas'); }
-
-function showPos() {
-  const el = document.getElementById('pos');
-  if (el) el.textContent = Math.round(px) + ',' + Math.round(py);
-}
 
 // noVNC 1.5 nao expoe sendPointer e o container do canvas precisa ter tamanho:
 // sem isso _scale fica 0 e absX() devolve 0. _sendMouse recebe CSS do canvas e
@@ -389,9 +454,12 @@ function wheel(dy) {
 
 function isTouchRecent() { return Date.now() - lastTouchAt < 700; }
 
+function buzz(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
+
 pad.addEventListener('touchstart', (ev) => {
   lastTouchAt = Date.now();
   if (ev.touches.length === 2) {
+    scrollActive = true;
     scrollLast = ev.touches[0].clientY;
     lastPt = null;
     return;
@@ -400,11 +468,13 @@ pad.addEventListener('touchstart', (ev) => {
   startPt = { x: t.clientX, y: t.clientY };
   lastPt = { x: t.clientX, y: t.clientY };
   moved = false;
+  dragging = false;
+  holdReady = false;
   clearTimeout(holdTimer);
   holdTimer = setTimeout(() => {
-    dragging = true;
-    pointer(1);
-  }, 450);
+    holdReady = true;
+    buzz(15);
+  }, 500);
 }, { passive: true });
 
 pad.addEventListener('touchmove', (ev) => {
@@ -420,7 +490,11 @@ pad.addEventListener('touchmove', (ev) => {
   if (!lastPt) lastPt = { x: t.clientX, y: t.clientY };
   if (startPt && Math.hypot(t.clientX - startPt.x, t.clientY - startPt.y) > 8) {
     moved = true;
-    if (!dragging) { clearTimeout(holdTimer); holdTimer = null; }
+    if (!holdReady) { clearTimeout(holdTimer); holdTimer = null; }
+    else if (!dragging) {
+      dragging = true;
+      pointer(1);
+    }
   }
   const dx = (t.clientX - lastPt.x) * (fbW / Math.max(1, pad.clientWidth));
   const dy = (t.clientY - lastPt.y) * (fbH / Math.max(1, pad.clientHeight));
@@ -433,8 +507,22 @@ pad.addEventListener('touchend', (ev) => {
   clearTimeout(holdTimer);
   holdTimer = null;
   if (ev.touches.length > 0) return;
-  if (dragging) { pointer(0); dragging = false; }
-  else if (!moved) click('left');
+  if (scrollActive) {
+    scrollActive = false;
+    scrollLast = null;
+    startPt = null;
+    lastPt = null;
+    return;
+  }
+  if (dragging) {
+    pointer(0);
+    dragging = false;
+  } else if (holdReady) {
+    click('right');
+  } else if (!moved) {
+    click('left');
+  }
+  holdReady = false;
   startPt = null;
   lastPt = null;
   scrollLast = null;
@@ -461,7 +549,102 @@ pad.addEventListener('mouseup', (ev) => {
 
 pad.addEventListener('contextmenu', (ev) => { ev.preventDefault(); });
 
+// teclado virtual: o textarea invisivel levanta o teclado do Android e cada
+// caractere confirmado vira keysym no X
+function openKeyboard() {
+  kbd.value = '';
+  kbd.focus();
+  buzz(10);
+}
+
+kbd.addEventListener('beforeinput', (ev) => {
+  if (ev.inputType === 'deleteContentBackward') {
+    ev.preventDefault();
+    keyTap('BackSpace');
+  } else if (ev.inputType === 'insertLineBreak' || ev.inputType === 'insertParagraph') {
+    ev.preventDefault();
+    keyTap('Enter');
+  }
+});
+
+kbd.addEventListener('input', () => {
+  const text = kbd.value;
+  kbd.value = '';
+  if (!text || !rfb) return;
+  for (const ch of text) {
+    const keysym = keysymFor(ch);
+    rfb.sendKey(keysym, 'Unidentified', true);
+    setTimeout(() => { if (rfb) rfb.sendKey(keysym, 'Unidentified', false); }, 25);
+  }
+});
+
+kbd.addEventListener('keydown', (ev) => {
+  const map = { Enter: 'Enter', Backspace: 'BackSpace', Tab: 'Tab', Escape: 'Escape' };
+  if (map[ev.key]) {
+    ev.preventDefault();
+    keyTap(map[ev.key]);
+  }
+});
+
+async function pasteClipboard() {
+  if (!rfb) return;
+  let text = '';
+  try {
+    text = await navigator.clipboard.readText();
+  } catch (err) {
+    text = prompt('texto para colar') || '';
+  }
+  if (text) rfb.clipboardPasteFrom(text);
+}
+
+function addButton(row, label, onPress, opts) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'k' + (opts && opts.wide ? ' wide' : '');
+  btn.textContent = label;
+  btn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    onPress(btn);
+  });
+  row.appendChild(btn);
+  return btn;
+}
+
+addButton(row1, 'Teclado', () => {
+  if (document.activeElement === kbd) kbd.blur();
+  else openKeyboard();
+}, { wide: true });
+
+for (const [label, name] of [['Ctrl', 'ControlLeft'], ['Alt', 'AltLeft'],
+                             ['Shift', 'ShiftLeft'], ['Super', 'MetaLeft']]) {
+  const btn = addButton(row1, label, () => toggleSticky(name));
+  stickyButtons.set(name, btn);
+}
+
+addButton(row1, 'Esc', () => keyTap('Escape'));
+addButton(row1, 'Tab', () => keyTap('Tab'));
+addButton(row1, 'Enter', () => keyTap('Enter'), { wide: true });
+addButton(row1, 'Apagar', () => keyTap('BackSpace'));
+addButton(row1, 'Del', () => keyTap('Delete'));
+addButton(row1, 'Colar', pasteClipboard, { wide: true });
+
+for (const [label, name] of [['\u25C0', 'ArrowLeft'], ['\u25B2', 'ArrowUp'],
+                             ['\u25BC', 'ArrowDown'], ['\u25B6', 'ArrowRight']]) {
+  addButton(row1, label, () => keyTap(name));
+}
+
+addButton(row1, 'Clique', () => click('left'), { wide: true });
+addButton(row1, 'Dir.click', () => click('right'), { wide: true });
+addButton(row1, 'Fn', () => document.body.classList.toggle('fn'));
+
+for (let i = 1; i <= 12; i++) addButton(row2, 'F' + i, () => keyTap('F' + i));
+for (const [label, name] of [['Home', 'Home'], ['End', 'End'],
+                             ['PgUp', 'PageUp'], ['PgDn', 'PageDown']]) {
+  addButton(row2, label, () => keyTap(name));
+}
+
 window.addEventListener('keydown', (ev) => {
+  if (ev.target === kbd) return;
   if (ev.key === 'Shift') return keyDown('ShiftLeft');
   if (ev.key === 'Control') return keyDown('ControlLeft');
   if (ev.key === 'Alt') return keyDown('AltLeft');
@@ -474,6 +657,7 @@ window.addEventListener('keydown', (ev) => {
   }
 });
 window.addEventListener('keyup', (ev) => {
+  if (ev.target === kbd) return;
   if (ev.key === 'Shift') return keyUp('ShiftLeft');
   if (ev.key === 'Control') return keyUp('ControlLeft');
   if (ev.key === 'Alt') return keyUp('AltLeft');
@@ -481,31 +665,6 @@ window.addEventListener('keyup', (ev) => {
   if (KEYS[ev.key] || ev.key.length === 1) keyUp(ev.key);
   else if (KEYS[ev.code]) keyUp(ev.code);
 });
-
-const combos = [
-  ['Ctrl', 'ControlLeft'], ['Alt', 'AltLeft'], ['Shift', 'ShiftLeft'],
-  ['Super', 'MetaLeft'], ['Esc', 'Escape'], ['Tab', 'Tab'],
-  ['Enter', 'Enter'], ['Back', 'BackSpace'], ['Del', 'Delete'],
-  ['Up', 'ArrowUp'], ['Down', 'ArrowDown'], ['Left', 'ArrowLeft'], ['Right', 'ArrowRight'],
-  ['F1', 'F1'], ['F2', 'F2'], ['F5', 'F5'], ['F10', 'F10'], ['F11', 'F11'],
-];
-for (const [label, name] of combos) {
-  const btn = document.createElement('button');
-  btn.textContent = label;
-  btn.dataset.name = name;
-  btn.addEventListener('touchstart', (ev) => { ev.preventDefault(); btn.classList.add('active'); keyDown(name); }, { passive: false });
-  btn.addEventListener('touchend', (ev) => { ev.preventDefault(); btn.classList.remove('active'); keyUp(name); }, { passive: false });
-  btn.addEventListener('mousedown', () => { btn.classList.add('active'); keyDown(name); });
-  btn.addEventListener('mouseup', () => { btn.classList.remove('active'); keyUp(name); });
-  keysBar.appendChild(btn);
-}
-
-for (const [label, side] of [['Clique', 'left'], ['Dir', 'right']]) {
-  const btn = document.createElement('button');
-  btn.textContent = label;
-  btn.addEventListener('click', () => click(side));
-  keysBar.appendChild(btn);
-}
 
 if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
 

@@ -10,7 +10,7 @@
 
 set -eu
 
-DEXTERMUX_VERSION="6.1.3"
+DEXTERMUX_VERSION="6.1.4"
 LIBS_COMMIT="e5446ba643f5b910295e7e489d5acf63a4b7bbc5"
 LIBS_ORDER="00-common 10-ui 20-detect 30-packages 40-session 50-remote 52-cast 60-ssh 70-proot 75-tunnel 80-reset 90-summary"
 
